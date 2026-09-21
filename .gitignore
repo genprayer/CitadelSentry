@@ -1,0 +1,25 @@
+# Binaries and build artifacts
+*.exe
+*.bin
+*.out
+citadel-sentry
+citadel-sentry.exe
+build/
+bin/
+releases/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs and scratch files
+*.log
+*.tmp
+*.bak
+scratch/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
