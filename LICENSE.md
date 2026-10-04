@@ -1,7 +1,7 @@
 # Лицензионное соглашение и условия использования Citadel Sentry 📜
 
 **Дата вступления в силу:** 2026 год  
-**Правообладатель:** Игровое сообщество «Citadel» (Citadel Community Network)  
+**Правообладатель:** Игровое сообщество «Citadel» (Citadel Project)  
 **Продукт:** Citadel Sentry (включая Citadel Seeder)
 
 ---
