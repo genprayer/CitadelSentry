@@ -47,5 +47,5 @@
 
 Официальные обновления, верифицированные сборки и обратная связь доступны исключительно на ресурсах сообщества Citadel:
 - **Официальный портал**: [jointhectl.com](https://jointhectl.com)
-- **Discord сообщества**: [discord.gg/citadel](https://discord.gg/citadel)
+- **Discord сообщества**: [discord.gg/citadel](https://discord.gg/projectcitadel)
 - **Репозиторий проекта**: Citadel Community Network
