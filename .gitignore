@@ -1,0 +1,39 @@
+# Binaries and build artifacts
+citadel-sentry
+citadel-sentry.exe
+citadel-seeder
+citadel-sentry-linux-dev
+citadel-sentry-windows-dev.exe
+.citadel-release.lock
+build/bin/
+releases/
+
+# Node & Nuxt artifacts
+node_modules/
+frontend/node_modules/
+frontend/.output/
+frontend/.nuxt/
+frontend/dist/
+.output/
+.nuxt/
+dist/
+
+# Wails generated bindings
+frontend/wailsjs/
+
+# Temporary / Config files
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+*.pem
+*.p12
+*.pfx
+auth.json
+config.json
+.playwright-cli/
+output/
+graphify-out/

@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  html {
+    color-scheme: dark;
+    /* Official Citadel-WebProject design tokens */
+    --color-background: 4 5 9; /* #040509 deep tactical pitch black */
+    --color-surface: 26 29 36; /* #1a1d24 sleek dark surface */
+    --color-accent: 235 225 200; /* #ebe1c8 warm brass/beige */
+    --color-accent-secondary: 189 174 141; /* #bdae8d muted brass gold */
+    --color-highlight: 255 255 255;
+    --color-primary: 240 242 245; /* #f0f2f5 */
+    --color-ui-danger: 239 68 68; /* #ef4444 */
+    --color-ui-warning: 234 179 8; /* #eab308 */
+    --color-ui-success: 34 197 94; /* #22c55e */
+    --color-scrollbar-thumb: 235 225 200;
+    --color-scrollbar-thumb-hover: 255 255 255;
+  }
+
+  body {
+    background-color: rgb(var(--color-background));
+    background-image:
+      radial-gradient(ellipse at 50% -20%, rgba(var(--color-primary), 0.08) 0%, transparent 40%),
+      radial-gradient(ellipse at center, #0f141e 0%, rgb(var(--color-background)) 70%);
+    color: rgb(var(--color-primary));
+    font-family: 'Orbitron', 'Tektur', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    @apply antialiased overflow-hidden select-none;
+  }
+}
+
+/* Wails Desktop Window Drag Regions */
+.wails-drag {
+  --wails-draggable: drag;
+}
+
+.wails-no-drag {
+  --wails-draggable: no-drag;
+}
+
+/* Citadel Tactical Scrollbars (Cross-platform WebKit + Standard) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-accent-secondary), 0.5) rgba(var(--color-background), 0.7);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(var(--color-background), 0.7);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-accent-secondary), 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-accent));
+}
+
+/* Glass & Glow utilities matching Citadel-WebProject - optimized for WebKit2GTK */
+.citadel-card {
+  background-color: rgb(var(--color-surface));
+  border: 1px solid rgb(var(--color-accent-secondary) / 0.2);
+}
+
+.citadel-card:hover {
+  border-color: rgb(var(--color-accent) / 0.35);
+}
+
+.citadel-border {
+  border-color: rgb(var(--color-accent-secondary) / 0.2);
+}
+
+/* Hardware accelerated smooth scrolling for Linux WebKit2GTK */
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+  will-change: scroll-position;
+}

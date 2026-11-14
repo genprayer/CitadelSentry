@@ -1,0 +1,23 @@
+{
+  "name": "citadel-sentry",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Citadel Sentry desktop application",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "generate": "npm --prefix frontend run generate",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "install:frontend": "npm --prefix frontend install",
+    "build:windows": "wails build -platform windows/amd64 -s && cp build/bin/citadel-sentry.exe .",
+    "build:linux": "wails build -tags webkit2_41 -platform linux/amd64 -s && cp build/bin/citadel-sentry .",
+    "release": "bash scripts/release.sh",
+    "release:minor": "bash scripts/release.sh minor",
+    "release:major": "bash scripts/release.sh major"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "version": "1.2.10"
+}
