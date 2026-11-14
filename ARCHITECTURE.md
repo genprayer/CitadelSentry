@@ -1,5 +1,11 @@
 # Архитектура и принципы работы Citadel Sentry 🏗️
 
+> **Обязательное архитектурное решение (ADR 0001):**
+> Проект строго следует [ADR 0001: Запрет неработающих способов подключения к Squad 10.6+](docs/adr/0001-squad-connection-rejected-methods.md).
+> Запрещены: консольная команда `connect IP:Port`, SendInput-автоматизация консоли, `steam://connect`, CLI-аргументы запуска и Synthetic Steam Invites как готовое решение.
+> Единственный подтверждённый маршрут:
+> `Server Browser → FSQServerItem → QueueForServer → Beacon → JoinSession → ClientTravel`.
+
 В данном документе подробно описано внутреннее устройство, схема компонентов, машина состояний сидинга и протоколы взаимодействия приложения **Citadel Sentry**.
 
 ---
@@ -37,17 +43,17 @@ graph TD
         App --> SettingsMgr
     end
 
-    subgraph OS ["Взаимодействие с системой и игрой"]
+    subgraph OS ["Взаимодействие с системой и игрой (Squad 10.6+)"]
         WinAdapter["Windows Adapter (Win32 API)"]
         LinuxAdapter["Linux Adapter (D-Bus / systemd)"]
-        SteamClient["Steam Protocol (steam://joinlobby/...)"]
+        BrowserBridge["Server Browser / Favorites Engine"]
         SquadProcess["Процесс Squad (SquadGame.exe)"]
 
         SeedEngine --> WinAdapter
         SeedEngine --> LinuxAdapter
-        WinAdapter --> SteamClient
-        LinuxAdapter --> SteamClient
-        SteamClient --> SquadProcess
+        WinAdapter --> BrowserBridge
+        LinuxAdapter --> BrowserBridge
+        BrowserBridge --> SquadProcess
     end
 ```
 
@@ -116,9 +122,8 @@ sequenceDiagram
     Note over OS,Squad: Процесс завершился штатно
     
     Engine->>Engine: Технологическая пауза (3 сек) для освобождения сокетов
-    Engine->>OS: Запуск следующего сервера через Steam
-    OS->>Steam: Вызов steam://joinlobby/393380/<ServerID2>/...
-    Steam->>Squad: Чистый запуск SquadGame.exe с автоподключением
+    Engine->>OS: Инициация подключения к следующему серверу
+    OS->>Squad: Подключение через Server Browser / Favorites (FSQServerItem -> QueueForServer)
     Engine->>Engine: Смена статуса на Connecting -> Active
 ```
 
