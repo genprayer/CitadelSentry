@@ -215,6 +215,34 @@ func (m *ConfigManager) RestoreOriginalConfig() error {
 	return nil
 }
 
+// SetShowEmptyServers ensures the browser displays empty servers, enabling discovery of new seed targets.
+func (m *ConfigManager) SetShowEmptyServers(enabled bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	val := "False"
+	if enabled {
+		val = "True"
+	}
+
+	var data []byte
+	if _, err := os.Stat(m.configPath); err == nil {
+		data, err = os.ReadFile(m.configPath)
+		if err != nil {
+			return err
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	text := string(data)
+	for _, section := range []string{"/script/squad.sqgameusersettings", "/script/engine.gameusersettings", "/script/squad.squadgameusersettings"} {
+		text = setIniSectionKey(text, section, "bShowEmptyServers", val)
+	}
+
+	return os.WriteFile(m.configPath, []byte(text), 0644)
+}
+
 func (m *ConfigManager) refreshDetectedPathsLocked() {
 	if m.detectPaths == nil {
 		return

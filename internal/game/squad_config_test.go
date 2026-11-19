@@ -387,7 +387,22 @@ func TestCheckMatchesPotatoSettings(t *testing.T) {
 		t.Fatalf("potato config with 1 FPS should not match requested 30 FPS")
 	}
 
-	// 4. Test on ConfigManager with file
+	// 4. Test SetShowEmptyServers without existing file
+	tempDir2 := t.TempDir()
+	filePath2 := filepath.Join(tempDir2, "DoesNotExist.ini")
+	mgr2 := NewConfigManagerWithPaths(filePath2, filepath.Join(tempDir2, "backup"))
+	if err := mgr2.SetShowEmptyServers(true); err != nil {
+		t.Fatalf("SetShowEmptyServers failed for non-existent file: %v", err)
+	}
+	content, err := os.ReadFile(filePath2)
+	if err != nil {
+		t.Fatalf("file should have been created: %v", err)
+	}
+	if !strings.Contains(string(content), "bShowEmptyServers=True") {
+		t.Fatalf("file does not contain bShowEmptyServers=True: %s", string(content))
+	}
+
+	// 5. Test on ConfigManager with file
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "GameUserSettings.ini")
 	if err := os.WriteFile(filePath, potatoConfig, 0o644); err != nil {

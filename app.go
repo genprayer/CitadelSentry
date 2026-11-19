@@ -205,6 +205,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 	go a.watchSquadRestore(ctx)
 
+	if err := a.squadConfig.SetShowEmptyServers(true); err != nil {
+		logger.Error("Could not enable bShowEmptyServers on startup", "error", err)
+	}
+
 	if err := a.backupInitialSquadConfig(); err != nil {
 		logger.Error("Could not create initial Squad settings backup", "error", err)
 	}

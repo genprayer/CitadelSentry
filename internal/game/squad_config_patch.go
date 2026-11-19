@@ -28,6 +28,7 @@ func potatoSettingValues(fpsLimit int, lowResolution bool, gpu ...platform.GPUIn
 	userValues := map[string]string{
 		"frameratelimit":               fmt.Sprintf("%.6f", float64(fpsLimit)),
 		"menuframeratelimit":           fmt.Sprintf("%.6f", float64(menuFps)),
+		"bshowemptyservers":            "True",
 		"busevsync":                    "False",
 		"buncaptexturepoolsize":        "False",
 		"texturestreampoolsizestorage": "(Value=0)",
