@@ -42,7 +42,10 @@ export function validateAppSettings(value: unknown): AppSettings {
   const seed = requireObject(settings.seed, 'seed')
   const power = requireObject(settings.power, 'power')
   const potato = requireObject(settings.potato, 'potato')
-  requireBooleans(general, 'general', ['launchOnStartup', 'minimizeToTray', 'closeToTray', 'notificationsEnabled', 'soundEnabled'])
+  if (general.autoUpdateCheck === undefined) {
+    general.autoUpdateCheck = true
+  }
+  requireBooleans(general, 'general', ['launchOnStartup', 'minimizeToTray', 'closeToTray', 'notificationsEnabled', 'soundEnabled', 'autoUpdateCheck'])
   requireBooleans(power, 'power', ['preventSleepDuringSeed'])
   requireBooleans(potato, 'potato', ['enabled', 'lowResolution', 'lowCpuPriority', 'autoRestoreOnExit'])
   if (general.language !== 'ru' && general.language !== 'en') throw new Error('Unsupported saved language')

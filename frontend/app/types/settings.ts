@@ -7,6 +7,7 @@ export interface GeneralSettings {
   notificationsEnabled: boolean
   soundEnabled: boolean
   language: 'ru' | 'en'
+  autoUpdateCheck: boolean
 }
 
 export interface SeedSettings {

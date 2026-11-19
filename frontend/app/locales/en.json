@@ -140,6 +140,15 @@
     "notificationsDesc": "Show system alerts when seeding targets are met or server slots open.",
     "sound": "Audible Notifications",
     "soundDesc": "Play audio cues upon server join, seeding finish, and target completion.",
+    "autoUpdateCheck": "Automatic update check",
+    "autoUpdateCheckDesc": "Check for new versions on GitHub every time Citadel Sentry starts.",
+    "checkUpdatesTitle": "Application updates",
+    "checkUpdatesDesc": "Manually check for new versions and install updates.",
+    "checkNow": "Check now",
+    "checking": "Checking...",
+    "upToDate": "You are running the latest version.",
+    "updateAvailable": "A new version is available: {version}",
+    "updateError": "Failed to check for updates: {error}",
     "seedTitle": "Auto-seeding defaults",
     "seedDesc": "Used for a new mission. You can change them before starting; they do not change the current mission.",
     "defaultTargetPlayers": "Player target on each server",
@@ -374,5 +383,18 @@
       "ru": "Русский",
       "en": "English"
     }
+  },
+  "updates": {
+    "modalTitle": "Update available",
+    "modalSubtitle": "A new version of Citadel Sentry has been released",
+    "currentVersion": "Current version",
+    "newVersion": "New version",
+    "updatePrompt": "Would you like to update the application now?",
+    "updateNow": "Update now",
+    "remindLater": "Remind me later",
+    "downloading": "Downloading update...",
+    "restarting": "Verifying checksum and restarting...",
+    "error": "Failed to apply update",
+    "stopSeedingFirst": "Please stop seeding before applying the update."
   }
 }

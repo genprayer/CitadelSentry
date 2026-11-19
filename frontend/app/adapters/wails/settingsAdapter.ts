@@ -10,7 +10,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     closeToTray: true,
     notificationsEnabled: true,
     soundEnabled: true,
-    language: 'ru'
+    language: 'ru',
+    autoUpdateCheck: true
   },
   seed: {
     defaultTargetPlayers: 50,

@@ -259,3 +259,51 @@ func TestSaveDoesNotPersistRemovedSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigLoadsOlderVersionWithoutAutoUpdateCheck(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("APPDATA", root)
+	directory := filepath.Join(root, "citadel-sentry")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Configuration JSON without autoUpdateCheck
+	rawConfig := `{
+		"general": {
+			"launchOnStartup": false,
+			"minimizeToTray": true,
+			"closeToTray": true,
+			"notificationsEnabled": true,
+			"soundEnabled": true,
+			"language": "ru"
+		},
+		"seed": {
+			"defaultTargetPlayers": 50,
+			"defaultMaxDurationMinutes": 60,
+			"defaultPostSeedAction": "do_nothing"
+		},
+		"power": {
+			"preventSleepDuringSeed": true
+		},
+		"potato": {
+			"enabled": true,
+			"fpsLimit": 1,
+			"lowResolution": false,
+			"lowCpuPriority": true,
+			"autoRestoreOnExit": true
+		},
+		"webApiBaseUrl": "https://jointhectl.com"
+	}`
+	path := filepath.Join(directory, "config.json")
+	if err := os.WriteFile(path, []byte(rawConfig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := NewManager()
+	if err != nil {
+		t.Fatalf("NewManager() failed on older config: %v", err)
+	}
+	if !manager.Get().General.AutoUpdateCheck {
+		t.Errorf("expected AutoUpdateCheck to default to true for older configs")
+	}
+}

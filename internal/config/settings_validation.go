@@ -81,12 +81,24 @@ func decodeSavedSettings(path string) (AppSettings, string, error) {
 			}
 		}
 	}
+	missingAutoUpdate := false
+	if genRaw, exists := fields["general"]; exists {
+		var genFields map[string]json.RawMessage
+		if err := json.Unmarshal(genRaw, &genFields); err == nil {
+			if _, hasUpdate := genFields["autoUpdateCheck"]; !hasUpdate {
+				missingAutoUpdate = true
+			}
+		}
+	}
 	if err := requireSettingsFields(fields, reflect.TypeOf(AppSettings{}), "", legacyPowerAction); err != nil {
 		return AppSettings{}, "", err
 	}
 	var settings AppSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return AppSettings{}, "", err
+	}
+	if missingAutoUpdate {
+		settings.General.AutoUpdateCheck = true
 	}
 	return settings, legacyPowerAction, nil
 }
@@ -99,6 +111,9 @@ func requireSettingsFields(fields map[string]json.RawMessage, kind reflect.Type,
 		value, exists := fields[key]
 		if !exists {
 			if name == "seed.defaultPostSeedAction" && (legacyPowerAction == "sleep" || legacyPowerAction == "shutdown") {
+				continue
+			}
+			if name == "general.autoUpdateCheck" {
 				continue
 			}
 			return fmt.Errorf("saved application setting %s is missing", name)

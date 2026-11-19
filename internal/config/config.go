@@ -19,6 +19,7 @@ type GeneralSettings struct {
 	NotificationsEnabled bool   `json:"notificationsEnabled"`
 	SoundEnabled         bool   `json:"soundEnabled"`
 	Language             string `json:"language"`
+	AutoUpdateCheck      bool   `json:"autoUpdateCheck"`
 }
 
 // SeedSettings defines seeding engine operational thresholds and preferences.
@@ -61,6 +62,7 @@ func DefaultSettings() AppSettings {
 			NotificationsEnabled: true,
 			SoundEnabled:         true,
 			Language:             "ru",
+			AutoUpdateCheck:      true,
 		},
 		Seed: SeedSettings{
 			DefaultTargetPlayers:      50,

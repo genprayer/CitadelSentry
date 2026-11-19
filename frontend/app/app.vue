@@ -3,12 +3,15 @@ import { useBridge } from '~/composables/useBridge'
 import { useSeed } from '~/composables/useSeed'
 import { useSettings } from '~/composables/useSettings'
 import { useServers } from '~/composables/useServers'
+import { useUpdater } from '~/composables/useUpdater'
 import PowerActionModal from '~/components/app/PowerActionModal.vue'
+import UpdateAvailableModal from '~/components/app/UpdateAvailableModal.vue'
 
 const { checkStatus, initBridgeListeners: initBridgeStatusListeners, disposeBridgeListeners: disposeBridgeStatusListeners } = useBridge()
 const { initBridgeListeners, disposeBridgeListeners, fetchCurrentSession } = useSeed()
-const { loadSettings } = useSettings()
+const { settings, loadSettings } = useSettings()
 const { fetchServers } = useServers()
+const { checkForUpdates } = useUpdater()
 
 let isMounted = false
 
@@ -29,7 +32,12 @@ onMounted(async () => {
     await loadSettings()
     if (!isMounted) return
 
-    // 4. Fetch initial server fleet telemetry in the background (non-blocking)
+    // 4. Check for updates on startup if enabled
+    if (settings.value.general?.autoUpdateCheck !== false) {
+      checkForUpdates(true).catch(err => console.warn('Background update check error', err))
+    }
+
+    // 5. Fetch initial server fleet telemetry in the background (non-blocking)
     fetchServers().catch(err => console.warn('Background server fetch error', err))
   } catch (err) {
     console.error('Initialization error during startup sequence', err)
@@ -50,5 +58,6 @@ onUnmounted(() => {
     </NuxtLayout>
 
     <PowerActionModal />
+    <UpdateAvailableModal />
   </div>
 </template>
