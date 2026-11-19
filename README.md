@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20%7C%20Linux-blue.svg)](https://github.com/citadel)
 [![Security](https://img.shields.io/badge/Security-EAC%20Safe%20%7C%20No%20Injections-success.svg)](./SECURITY_AND_SAFETY.md)
 [![License](https://img.shields.io/badge/License-Citadel%20Proprietary-gold.svg)](./LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-1.3.0-emerald.svg)](https://github.com/genprayer/CitadelSentry/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.1-emerald.svg)](https://github.com/genprayer/CitadelSentry/releases)
 [![Linux Status](https://img.shields.io/badge/Linux-Ready-orange.svg)](./LINUX_GUIDE.md)
 
 ---
@@ -51,19 +51,23 @@
 
 ---
 
-## ✨ Новое в версии v1.3.0
+## ✨ Новое в версии v1.3.1
 
 ### 🪟 Для пользователей Windows
-- **🌐 Автоматическая видимость пустых серверов**: при запуске Sentry автоматически активирует параметр `bShowEmptyServers=True` в конфигурации Squad, устраняя сокрытие серверов сообщества с 0 игроков системным фильтром игры.
-- **🛠️ Полное исправление ошибки запуска Potato Mode (`resolutionsizex not found`)**: безопасная авто-инъекция параметров окна в активную секцию без падения клиента; повреждённые файлы `WindowsNoEditor` автоматически пропускаются в пользу `WindowsClient`.
-- **⚡ Оптимизация оперативной памяти (RAM) и стриминга текстур**: строгие лимиты пула текстур (`r.Streaming.PoolSize=150`, `bUncapTexturePoolSize=False`) для предотвращения утечек памяти во время фонового сидинга.
-- **🎮 Нативное определение GPU (DirectX DXGI) и адаптивные апскейлеры**: опрос DXGI для автоматического подбора наилучшего масштабирования (DLSS UltraPerformance для RTX, AMD FSR + Frame Generation для Radeon) и сброс ресурсоёмких эффектов.
-- **🔒 Неприкосновенный базовый снимок настроек (Baseline Snapshot)**: защита оригинального `GameUserSettings.ini` с гарантированным откатом байт-в-байт в один клик.
+- **🔄 Автоматическая проверка обновлений при старте**: при запуске Sentry фоном проверяет наличие новых версий на GitHub. При обнаружении релиза появляется модальное окно с описанием и кнопками «Обновить сейчас» и «Напомнить позже».
+- **⚡ Авто-обновление в один клик**: скачивание бинарника, строгая валидация контрольной суммы `SHA-256`, атомарная замена исполняемого файла и безопасный перезапуск.
+- **🎛️ Управление в настройках**: тумблер включения/выключения автопроверки и кнопка ручной проверки «Проверить сейчас» с отображением текущей версии.
+- **🌐 Видимость пустых серверов**: автоматическая активация `bShowEmptyServers=True` для мгновенного отображения 0-player серверов Citadel в браузере Squad.
+- **🛠️ Исправление ошибки запуска Potato Mode (`resolutionsizex not found`)**: динамическая вставка разрешения, пропуск повреждённых секций `WindowsNoEditor`.
+- **⚡ Оптимизация памяти (RAM/VRAM)**: строгие лимиты стриминга пула текстур (`r.Streaming.PoolSize=150`, `bUncapTexturePoolSize=False`).
+- **🎮 Нативное определение GPU (DirectX DXGI)**: адаптивный выбор апскейлера под NVIDIA RTX (DLSS), Radeon (FSR + AMDFG) и сброс тяжёлого рендера в ноль.
+- **🔒 Неприкосновенный базовый снимок (Baseline Snapshot)**: неизменяемый эталонный снимок оригинальных настроек с возможностью отката в один клик.
 
 <details>
 <summary>🐧 <b>Особенности и оптимизации для Linux</b></summary>
 
-- **🌐 Отображение пустых серверов под Proton**: алгоритм автоматической правки `bShowEmptyServers=True` полностью перенесён и валидирован для конфигураций Proton и Steam Play.
+- **🔄 Кроссплатформенный авто-апдейтер**: фоновая проверка обновлений и всплывающее модальное окно полностью синхронизированы для Linux-сборки (WebKit2GTK).
+- **🌐 Отображение пустых серверов под Proton**: автоматическая правка `bShowEmptyServers=True` для конфигураций Proton и Steam Play.
 - **⚡ Синхронизация оптимизаций движка**: динамическая вставка разрешения, очистка второстепенных файлов и лимиты пула памяти перенесены в Linux-бинарник.
 - **🧈 Плавный интерфейс (WebKit2GTK)**: аппаратный GPU-композитинг, 60+ FPS при скролле списков и карточек на Wayland и X11.
 </details>
@@ -86,7 +90,7 @@
 
 ### 🪟 Windows (10 / 11 64-bit) — Основная версия
 
-1. Скачайте `citadel-sentry-v1.3.0-windows-amd64.exe` из раздела релизов.
+1. Скачайте `citadel-sentry-v1.3.1-windows-amd64.exe` из раздела релизов.
 2. Убедитесь, что клиент **Steam** запущен на вашем ПК.
 3. Запустите `.exe` (установка не требуется, приложение полностью портативное).
 4. Выберите нужный сервер Citadel и нажмите «Сидить».
@@ -97,11 +101,11 @@
 > [!NOTE]
 > Для запуска на Linux требуется установленный `webkit2gtk-4.1` (или `webkit2gtk4.1`) и настроенный клиент Steam (Proton).
 
-1. Скачайте `citadel-sentry-v1.3.0-linux-amd64` и `SHA256SUMS.txt`.
+1. Скачайте `citadel-sentry-v1.3.1-linux-amd64` и `SHA256SUMS.txt`.
 2. Сделайте файл исполняемым и запустите его:
    ```bash
-   chmod +x ./citadel-sentry-v1.3.0-linux-amd64
-   ./citadel-sentry-v1.3.0-linux-amd64
+   chmod +x ./citadel-sentry-v1.3.1-linux-amd64
+   ./citadel-sentry-v1.3.1-linux-amd64
    ```
 3. Подробное руководство по зависимостям, созданию системного ярлыка и интеграции читайте в [**Руководстве по Linux (LINUX_GUIDE.md)**](./LINUX_GUIDE.md).
 </details>
