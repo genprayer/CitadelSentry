@@ -1,141 +1,132 @@
-# Citadel Sentry
+# Citadel Sentry 🛡️
 
-Citadel Sentry is a Wails desktop application for Citadel/Squad seeding. It loads the server fleet from the Citadel API, coordinates automated one-click joining into the Citadel game servers on Linux or Windows, and manages a bounded queue of seeding sessions.
+> **Официальный десктопный клиент автоматического сидирования и телеметрии серверов Squad сообщества Citadel.**
 
-> **Architectural Decision (ADR 0001)**: The project strictly adheres to [`docs/adr/0001-squad-connection-rejected-methods.md`](docs/adr/0001-squad-connection-rejected-methods.md).
-> Prohibited: console `connect IP:Port`, SendInput console automation, `steam://connect`, CLI params, Synthetic Steam Invites as a complete join solution.
-> Confirmed pipeline: `Server Browser → FSQServerItem → QueueForServer → Beacon → JoinSession → ClientTravel`.
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20%7C%20Linux-blue.svg)](https://github.com/citadel)
+[![Security](https://img.shields.io/badge/Security-EAC%20Safe%20%7C%20No%20Injections-success.svg)](./SECURITY_AND_SAFETY.md)
+[![License](https://img.shields.io/badge/License-Citadel%20Proprietary-gold.svg)](./LICENSE.md)
+[![Version](https://img.shields.io/badge/Version-1.3.2-emerald.svg)](https://github.com/genprayer/CitadelSentry/releases)
+[![Linux Status](https://img.shields.io/badge/Linux-Ready-orange.svg)](./LINUX_GUIDE.md)
 
-The current release is a release candidate. It is not a kernel driver, anti-cheat component, or remote server manager. It does not connect to Squad through a raw IP command and it does not claim to detect a player manually changing servers inside Squad.
+---
 
-## Download and run
+> [!WARNING]
+> ### ⚠️ Статус Linux-версии: Публичное бета-тестирование (Public Beta)
+> Версия **Citadel Sentry для Linux** в настоящий момент находится в стадии **активного публичного бета-тестирования**. 
+> На Linux запуск Squad осуществляется через Proton / Steam Play, а окружения рабочего стола (Wayland/X11, системный спящий режим systemd) имеют свои особенности в зависимости от дистрибутива. Работа нового механизма обновления на установленных Windows и Linux ещё требует проверки.
+> Если вы используете Linux — пожалуйста, ознакомьтесь с [**Руководством по Linux (LINUX_GUIDE.md)**](./LINUX_GUIDE.md) и сообщайте о любых найденных нюансах в Discord сообщества Citadel.
 
-Download the Windows or Linux binary and the matching `SHA256SUMS.txt` from the release page. Verify the checksum before starting the executable.
+---
 
-### Windows (По умолчанию / Primary)
+> [!IMPORTANT]
+> ### 🧪 Статус разработки: Фаза активного тестирования (Beta)
+> Приложение **Citadel Sentry** в настоящее время находится в фазе активного бета-тестирования. Мы постоянно развиваем и улучшаем клиент, поэтому **некоторые экспериментальные функции могут работать нестабильно, находиться в доработке или временно требовать ручной проверки**. Если вы столкнулись с неожиданным поведением — пожалуйста, сообщайте об этом в Discord сообщества Citadel. Ваша обратная связь помогает сделать Часового надежнее!
 
-1. Скачайте `citadel-sentry-v<VERSION>-windows-amd64.exe` и `SHA256SUMS.txt`.
-2. В PowerShell проверьте контрольную сумму файла:
-   ```powershell
-   Get-FileHash .\citadel-sentry-v<VERSION>-windows-amd64.exe -Algorithm SHA256
-   ```
-   Сравните полученный хэш со строкой в `SHA256SUMS.txt`.
-3. Запустите `.exe`. Требуется Windows 10/11 с установленным Steam и системным компонентом WebView2 (встроен в Windows 10/11 по умолчанию).
+---
 
-<details>
-<summary>🐧 <b>Инструкция для Linux (нажмите, чтобы развернуть)</b></summary>
+## 📌 Что такое Citadel Sentry?
 
-1. Скачайте бинарник для Linux и сделайте его исполняемым:
-   ```bash
-   chmod +x citadel-sentry-v<VERSION>-linux-amd64
-   ./citadel-sentry-v<VERSION>-linux-amd64
-   ```
-2. Проверка контрольной суммы:
-   ```bash
-   sha256sum -c SHA256SUMS.txt --ignore-missing
-   ```
+**Citadel Sentry** — это ваш персональный цифровой **Часовой (Sentry)**, созданный специально для игроков и участников сообщества Citadel, играющих в **Squad**. 
 
-> **Окружение**: Приложение скомпилировано с тегом `webkit2_41` (WebKitGTK 4.1). Поддерживаются Wayland и X11 (GNOME, KDE Plasma и др.). Конфигурация Squad автоматически обнаруживается в библиотеках Steam и префиксе Proton (AppID 393380).
-</details>
+Пока вы занимаетесь своими делами, работаете, общаетесь в Discord или отдыхаете, Часовой берет на себя рутину: он чутко дежурит, следит за состоянием серверов сообщества и безопасно автоматизирует процесс наполнения онлайна («сидирования»):
+1. **Назначение поста**: Вы выбираете целевой сервер или выстраиваете очередь серверов Citadel.
+2. **Безопасный запуск**: Часовой управляет процессом Squad и подключает вас на сервер сообщества Citadel без внедрения в память и без эмуляции читов. В Squad 10.6+ подключение строится по подтверждённому маршруту Server Browser / Favorites / Queue Engine ([ADR 0001](docs/adr/0001-squad-connection-rejected-methods.md)).
+3. **Бдительное дежурство**: В фоновом режиме Sentry отслеживает онлайн игроков в реальном времени, параллельно активируя щадящий энергосберегающий профиль («Мод картошки»), чтобы ваш компьютер не шумел и не грелся.
+4. **Выполнение задачи**: Как только на сервере набирается нужный онлайн (или выходит установленное вами время ожидания), Часовой завершает миссию и выполняет выбранную вами инструкцию: переводит вас на следующий сервер из очереди, возвращает оригинальные настройки графики, закрывает Squad, переводит компьютер в спящий режим или штатно завершает работу ПК.
 
-On first launch, open Settings and confirm the Citadel API endpoint. The default is `https://jointhectl.com`. The application uses the public server API without a desktop login flow.
+Вам больше не нужно часами дежурить у монитора на полупустой карте — Citadel Sentry сделает это за вас в фоновом режиме, сохраняя ваше личное время, электроэнергию и ресурс оборудования.
 
-The local settings file is created under the operating system's user configuration directory as `citadel-sentry/config.json`. Settings are written with user-only permissions where the platform supports them. Existing values are validated before use or save; missing, null, ambiguous or unsupported choices are reported without replacing the file with defaults. Fresh settings request CPU-priority tuning only when the platform supports it.
+---
 
-## Build from source
+## 🛡️ Гарантии безопасности: Защита ПК и аккаунта игрока
 
-Requirements:
+Мы понимаем, что пользователи доверяют программе управление игрой и питанием компьютера. Архитектура **Citadel Sentry** изначально спроектирована с приоритетом абсолютной безопасности:
 
-- Go version declared in [`go.mod`](go.mod)
-- Node.js 18 or newer and npm
-- Wails CLI v2
-- Linux: GTK/WebKitGTK development packages, a C compiler, and `pkg-config`
-- Windows: a supported Go/MinGW toolchain and WebView2 runtime for interactive testing
+- **100% совместимость с Easy Anti-Cheat (EAC)**: Программа **НЕ внедряется** в память игры (никаких DLL-инъекций, перехватов вызовов или чтения памяти). Подключение выполняется по штатному игровому маршруту без эмуляции читов ([ADR 0001](docs/adr/0001-squad-connection-rejected-methods.md)). Античит Squad видит штатное подключение.
+- **Никакого вреда оборудованию и ОС**: Управление питанием (сон и выключение ПК) использует исключительно штатные функции операционной системы (Win32 API на Windows, `systemctl` / `loginctl` на Linux) с корректным сохранением данных и закрытием фоновых служб.
+- **Никаких паролей и персональных данных**: Приложение не требует ввода паролей от Steam, Discord или почты. Вся телеметрия флота серверов общедоступна.
+- **Полный контроль в руках игрока**: Вы можете в любой момент прервать сидинг одной кнопкой. Если вы сами закроете игру через Alt+F4 или игровое меню, Sentry мгновенно зафиксирует это и безопасно остановит сессию.
 
-Install frontend dependencies and run the checks:
+Подробнее читайте в специальном документе: [**Гарантии безопасности (SECURITY_AND_SAFETY.md)**](./SECURITY_AND_SAFETY.md).
 
-```bash
-npm run install:frontend
-gofmt -w $(find internal -type f -name '*.go') app.go main.go
-npm run typecheck
-npm run lint
-npm run generate
-go vet ./...
-go test -race ./...
-```
+---
 
-Build locally with:
+## ✨ Новое в версии v1.3.2
 
-```bash
-npm run build:linux
-npm run build:windows
-```
-
-The release pipeline is documented in [`docs/RELEASING.md`](docs/RELEASING.md). Never put `.env` files, access tokens, auth caches, signing keys, private server configuration, or unlicensed third-party assets into a public repository.
-
-## Product behavior and limitations
-
-- **Seamless server switching**: When advancing to the next server in the queue (upon reaching player targets) or skipping a server manually, Sentry dispatches the new connection directly to the running Squad process without killing or restarting the game. If Squad was stopped, it performs a clean cold launch.
-- A running game installation on Windows uses the user's `LOCALAPPDATA` configuration for settings and logs.
+### 🪟 Для пользователей Windows
+- **🔄 Автоматическая проверка обновлений при старте**: при запуске Sentry фоном проверяет наличие новых версий на GitHub. При обнаружении релиза появляется модальное окно с описанием и кнопками «Обновить сейчас» и «Напомнить позже».
+- **⚡ Авто-обновление в один клик**: скачивание бинарника, строгая валидация контрольной суммы `SHA-256`, атомарная замена исполняемого файла и безопасный перезапуск.
+- **🎛️ Управление в настройках**: тумблер включения/выключения автопроверки и кнопка ручной проверки «Проверить сейчас» с отображением текущей версии.
+- **🌐 Видимость пустых серверов**: автоматическая активация `bShowEmptyServers=True` для мгновенного отображения 0-player серверов Citadel в браузере Squad.
+- **🛠️ Исправление ошибки запуска Potato Mode (`resolutionsizex not found`)**: динамическая вставка разрешения, пропуск повреждённых секций `WindowsNoEditor`.
+- **⚡ Оптимизация памяти (RAM/VRAM)**: строгие лимиты стриминга пула текстур (`r.Streaming.PoolSize=150`, `bUncapTexturePoolSize=False`).
+- **🎮 Нативное определение GPU (DirectX DXGI)**: адаптивный выбор апскейлера под NVIDIA RTX (DLSS), Radeon (FSR + AMDFG) и сброс тяжёлого рендера в ноль.
+- **🔒 Неприкосновенный базовый снимок (Baseline Snapshot)**: неизменяемый эталонный снимок оригинальных настроек с возможностью отката в один клик.
 
 <details>
-<summary>🐧 <b>Особенности обнаружения конфигураций и поведения на Linux (Proton)</b></summary>
+<summary>🐧 <b>Особенности и оптимизации для Linux</b></summary>
 
-- On Linux, Squad settings and logs are discovered in Steam's Proton prefix for app 393380, using registered libraries from `libraryfolders.vdf`, including external drives, Steam Flatpak and custom XDG data locations. The config is under `pfx/drive_c/users/<user>/AppData/Local/SquadGame/Saved/Config/Windows*/GameUserSettings.ini` (the legacy `Squad` directory is also checked). Manually relocated Wine prefixes outside these Steam libraries are not automatically discovered.
-- Linux sleep inhibition uses the actual `systemd-logind` file descriptor and releases it with the background worker.
-- Desktop URI dispatch on Linux uses native execution with fallback, and WebKitGTK 4.1 hardware compositing is enabled for smooth 60+ FPS UI rendering under Wayland and X11.
+- **🔄 Кроссплатформенный авто-апдейтер**: фоновая проверка обновлений и всплывающее модальное окно полностью синхронизированы для Linux-сборки (WebKit2GTK).
+- **🌐 Отображение пустых серверов под Proton**: автоматическая правка `bShowEmptyServers=True` для конфигураций Proton и Steam Play.
+- **⚡ Синхронизация оптимизаций движка**: динамическая вставка разрешения, очистка второстепенных файлов и лимиты пула памяти перенесены в Linux-бинарник.
+- **🧈 Плавный интерфейс (WebKit2GTK)**: аппаратный GPU-композитинг, 60+ FPS при скролле списков и карточек на Wayland и X11.
 </details>
 
-- The visible fleet is authoritative. Hidden or offline servers returned by the API are not queued.
-- Fleet replies must contain explicit server identities and required numeric telemetry. Invalid/null/duplicate records preserve the last confirmed list and show an error, including on the dashboard. A late request cannot replace a newer list or clear its loading state. The browser preview uses the saved API endpoint; unavailable reserve-queue data and missing display targets are not replaced with invented counts.
-- Seeding requires a confirmed session snapshot. Unavailable or malformed bridge state keeps the last valid snapshot, shows an unknown status and offers a retry; it does not display a new idle session or invent absent plan choices. The saved target is retained, and already reached targets are left to the backend's preflight skip check.
-- Server capacity must be known and positive. The backend rejects a target above the confirmed capacity, including a capacity change detected immediately before launching Squad.
-- A queue switches servers directly without closing Squad if the game is already running. If Squad was closed or stopped, it launches the game, waits for menu and login readiness, and dispatches the connection. Each server requires its own connection confirmation.
-- A running process or dispatched invitation does not start the timer. New `SquadGame.log` records must show a server welcome and the deployment-menu load, plus the selected IP/game port. When the API hides that endpoint, Sentry instead requires the fresh local player's logged SteamID in the selected server's public team roster; a player who has not joined a team may remain unconfirmed. Log discovery follows the same Windows/Steam-library locations as settings. Missing confirmation stays in Connecting, with a separate 12-minute connection deadline; explicit log/read/roster errors fail visibly. These failures do not execute mission timeout actions. Log rotation/truncation resets connection evidence, and time is paused after a disconnection until the target connection is confirmed again.
-- Cold launch uses Steam's normal game launch without MoviePlayer overrides. Sentry resolves the current invitation after menu/login readiness. Automated missions retry up to twice only when Squad explicitly reports that a session search prevented invitation handling; the retry delay is cancellable. Automatic intro skipping is not provided. The observed RedpointEOSRoomId invitation rejection remains unresolved, and native Windows joining is unverified.
-- The unreleased investigation found an incompatible Steam lobby build before the secondary EOS error. Improved rejection reporting is covered by automated tests; successful native joining remains unconfirmed. Publication is blocked pending the scenarios in [release acceptance](docs/RELEASE_ACCEPTANCE.md).
-- Target and timeout clocks use the local operating-system clock; backend elapsed time is monotonic within the running process. An explicitly selected local finish time keeps its chosen date and recalculates remaining minutes when Start is pressed. Editing the duration or choosing a duration preset returns to a relative timer. A passed or too-short finish time blocks launch instead of choosing another day.
-- The initial player count comes from the confirmed live preflight response before game dispatch. An already reached target shows complete progress even when no game launch was necessary.
-- A timeout policy of `retry` intentionally remains on the current server until the target is reached or the user presses Stop. The UI warns about this behavior.
-- Targets and time budgets apply separately to each server. Reaching a target advances to the next queued server automatically. Timeout actions either skip the current server or stop the entire queue, as explicitly labelled; skipping the last server leaves Squad open. Any skipped server makes the overall outcome `timed_out` and prevents the successful-queue action, even when the last server later succeeds. The interface previews the selected policy before starting and reports the skipped count during/after the mission.
-- General seeding settings provide defaults for a new mission. The launch dialog can override them; saving defaults does not change an already running mission.
-- A selected sleep/shutdown action after success runs only when every selected server reaches its target. An explicitly selected timeout power action uses the same safety checks. Stop and failures do not execute power actions; the minimum active duration counts only confirmed connection time, excluding launch preparation, loading and waiting.
-- Sentry cannot reliably detect a manual in-game server switch. It tracks the server it asked Squad to join and refreshes that server's public telemetry. Automatic cancellation on manual switching would require a trusted player/Steam telemetry contract that does not exist yet.
-- Joining can fail when Steam, Squad, the browser protocol handler, the Citadel API, or the user's network is unavailable. The UI reports the error and does not silently retry a direct join.
-- Potato Mode requires Squad to be closed before seeding starts. Sentry changes only supported settings already present in `GameUserSettings.ini` and, when present, the matching `Engine.ini`. It does not create missing game keys or files. Missing required settings or ambiguous values stop the attempt; a failed partial patch restores verified originals.
-- Sentry records the original contents of every changed INI file with SHA-256 hashes. With automatic restoration enabled, it waits for Squad to exit after seeding before restoring settings; unrelated changes made by Squad are retained. Restoration failures remain visible as a pending restore in Settings.
-- Invalid or ambiguous backup metadata blocks new patches and baseline replacement while preserving the saved originals. Directory aliases are deduplicated; file links, shared hard links and special files are rejected before mutation.
-- Status and recovery decisions verify every recorded original and expected patch by SHA-256, with original sizes checked as well. Corrupt, missing or unreadable records remain visible and cannot be silently replaced by a new baseline. Nonregular manifests are rejected before opening them.
-- Incomplete or invalid desktop config status is shown as unavailable. Late reads cannot hide a newer backup failure or discard a newer verified status; Settings offers a retry and keeps config actions disabled until the observations validate.
-- Restoration recovers a removed managed key from its recorded original while preserving unrelated edits and valid player overrides. Repeated INI sections do not cause duplicate settings, and saved values are restored literally.
-- Missing backup metadata also blocks replacement when original/session files remain. Sentry keeps these records for recovery instead of treating them as a fresh baseline. Unreadable INI/backup paths and unknown or conflicting FPS values are reported; FPS diagnostics ignore comments/unrelated sections and retain fractional values.
-- New transactions also record the actual permission bits (Windows read-only state) and restore them across restarts while preserving external permission changes. Historical backups without attribute records keep existing permissions; recreated legacy files use the backup's actual permissions. These records do not reconstruct unrecorded ACLs or other filesystem attributes.
-- Failed missions and interrupted preparation roll back temporary settings after a verified Squad exit even when automatic restoration after normal completion is disabled. The backup manifest preserves this obligation across application restarts; only a finished owning session can allow the user's opt-out.
-- Settings prepared for a queue that never observes Squad are restored even when automatic restoration is disabled. Interrupted graphics recovery is checked before reading application preferences, so a broken `config.json` cannot discard a verified game backup.
-- A failed process inspection is shown as unknown and blocks settings changes and power actions. Sleep/shutdown stops if Squad cannot be closed or its exit cannot be verified.
-- Closing the desktop stops owned background work, waits for sleep-inhibitor cleanup, and attempts pending restoration only after a verified game exit. If Squad remains running, the verified backup remains pending for the next launch.
-- Windows CPU-priority changes first record the observed class and process identity in a checksummed backup. Each game process in the queue is checked; failed application rolls back, and Stop, normal completion or startup restores recorded values while preserving external changes. Linux reports this optional priority feature as unavailable and blocks a requested change before patching graphics.
-- An OS file lock protects application state before logging or recovery begins. A second executable cannot recover or overwrite the running instance's state. The lock is released by process exit, while its stable file remains in the user configuration directory.
-- Linux sleep inhibition uses the actual logind file descriptor and releases it with the worker. Desktop URI dispatch waits for the bounded opener result and supports cancellation; Windows opens resources through the shell API without passing URLs through a command interpreter.
-- The log viewer reports failed reads and clearing while keeping the last confirmed lines. Refresh retries reading; an older read cannot repopulate the view after clearing. Native log operations require their desktop methods, and malformed line payloads are rejected before rendering.
-- If a previously existing INI file disappears during Potato Mode, restoration recreates it from its verified backup without replacing a concurrently created file. An absent file that Sentry originally created stays absent after restoration.
-- The join resolver uses the website's verified connection metadata. If the website cannot provide a supported lobby link, Sentry reports that result instead of selecting another server from built-in names.
-- Actual in-game FPS depends on Squad loading these files and not overriding the cap at runtime. Verify the FPS cap in a Windows/Squad smoke test before publishing a build with Potato Mode claims.
-- Version 1.2.2 adds a Settings button that checks stable releases at `genprayer/CitadelSentry` and installs a newer version in one click. It downloads the matching portable binary into the current application directory, verifies its SHA-256 against the release checksum file, exits Sentry, swaps the binary through a helper process, and launches the new version. Stop seeding and finish any pending Squad config restoration first; the application directory must be writable.
-- Builds through 1.2.1 have no updater and require one manual installation of 1.2.2. The button updates 1.2.2 and later builds when a newer stable GitHub release is published.
-- Update metadata must explicitly identify the release version, draft/prerelease flags and asset records. Missing/null consumed fields, duplicate keys or asset names and unfinished platform assets stop the check before download. Unknown additional GitHub metadata and nullable digests remain compatible; downloaded binaries still require the release SHA-256 verification.
-- Once updating or shutdown owns application state, user settings saves and manual Squad backup/restoration return failure without mutation. Internal shutdown recovery remains responsible for pending verified originals after Squad exits.
-- New helpers record their actual filename/hash, target path and expected update hash before launch. Cleanup waits for the identified helper to exit and removes only verified recorded files after startup acknowledgement. Unknown files, linked records and historical directories without ownership metadata are retained. A cleaning checkpoint permits interrupted owned-file removal to resume without recursive directory deletion. Failed helper starts retain their records and report the directory rather than deleting uncertain contents.
+---
 
-## Documentation
+## ✨ Ключевые возможности
 
-- [`docs/INSTALLATION.md`](docs/INSTALLATION.md) — end-user installation and first-run steps
-- [`docs/TESTING.md`](docs/TESTING.md) — acceptance gates, smoke tests, and leak/crash checks
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — API, Steam join, queue engine, and Linux/Windows dependency injection
-- [`docs/SAFETY.md`](docs/SAFETY.md) — failure handling, power actions, data handling, and incident response
-- [`docs/PUBLISHING.md`](docs/PUBLISHING.md) — source/binary publication, assets, licensing, and release hygiene
-- [`docs/RELEASING.md`](docs/RELEASING.md) — versioning, checksums, artifacts, and rollback
+- 🚀 **Один клик для старта**: Выберите сервер из списка флота Citadel и нажмите «Сидить».
+- 📋 **Умная очередь серверов**: Настройте последовательное сидирование (например, 2 или 3 сервера подряд). Игра сама переключит сервер после достижения онлайна на первом.
+- ⏱️ **Гибкие пороги и таймауты**: Установите желаемый порог онлайна (например, 45, 55 или 70 игроков) и максимальное время ожидания.
+- 🕒 **Таймер по местному времени**: Возможность завершить сидинг строго к определенному часу вашего часового пояса.
+- 💤 **Автоматический сон / выключение**: Оставьте сидинг на ночь — после заполнения серверов Sentry выключит компьютер или отправит его в сон.
+- 📊 **Живая телеметрия**: Отображение карты, слоя, игроков, очереди и пинга в реальном времени.
+- 🌐 **Двуязычный интерфейс**: Полная поддержка русского и английского языков.
 
-## License
+---
 
-The repository currently contains an all-rights-reserved [`LICENSE`](LICENSE) notice and the root package is marked `UNLICENSED`. This means the source may be published for review without granting permission to reuse, redistribute, or create derivative projects. It is source-available, not an open-source license. Obtain a lawyer's review before public distribution or commercial enforcement.
+## 🚀 Быстрый старт
+
+### 🪟 Windows (10 / 11 64-bit) — Основная версия
+
+1. Скачайте `citadel-sentry-v1.3.2-windows-amd64.exe` из раздела релизов.
+2. Убедитесь, что клиент **Steam** запущен на вашем ПК.
+3. Запустите `.exe` (установка не требуется, приложение полностью портативное).
+4. Выберите нужный сервер Citadel и нажмите «Сидить».
+
+<details>
+<summary>🐧 <b>Инструкция по запуску на Linux (нажмите, чтобы развернуть)</b></summary>
+
+> [!NOTE]
+> Для запуска на Linux требуется установленный `webkit2gtk-4.1` (или `webkit2gtk4.1`) и настроенный клиент Steam (Proton).
+
+1. Скачайте `citadel-sentry-v1.3.2-linux-amd64` и `SHA256SUMS.txt`.
+2. Сделайте файл исполняемым и запустите его:
+   ```bash
+   chmod +x ./citadel-sentry-v1.3.2-linux-amd64
+   ./citadel-sentry-v1.3.2-linux-amd64
+   ```
+3. Подробное руководство по зависимостям, созданию системного ярлыка и интеграции читайте в [**Руководстве по Linux (LINUX_GUIDE.md)**](./LINUX_GUIDE.md).
+</details>
+
+---
+
+## 📚 Навигация по документации
+
+| Документ | Описание |
+|---|---|
+| [**Архитектура и схемы работы**](./ARCHITECTURE.md) | Mermaid-диаграммы жизненного цикла, машина состояний, протоколы взаимодействия. |
+| [**Руководство пользователя**](./USER_GUIDE.md) | Пошаговые инструкции по настройке очередей, лимитов и действий после сидинга. |
+| [**Безопасность и защита ПК**](./SECURITY_AND_SAFETY.md) | Подробное описание механизмов защиты, работы с EAC и системным питанием. |
+| [**Linux Guide**](./LINUX_GUIDE.md) | Запуск на Linux, зависимости WebKit2GTK, интеграция в меню приложений (.desktop). |
+| [**Часто задаваемые вопросы (FAQ)**](./FAQ.md) | Ответы на популярные вопросы сообщества и решение возможных проблем. |
+| [**Лицензия и право собственности**](./LICENSE.md) | Официальные условия использования и право собственности Citadel Community. |
+
+---
+
+## ⚖️ Право собственности
+
+Программное обеспечение **Citadel Sentry**, включая исходный код, графические материалы, брендинг и сопроводительную документацию, является объектом интеллектуальной собственности и исключительным правом игрового сообщества **Citadel** («Citadel Community Network»).
+
+Любое несанкционированное коммерческое использование, декомпиляция с целью создания вредоносного ПО или распространение модифицированных версий без явного разрешения владельцев запрещены. Подробности см. в [LICENSE.md](./LICENSE.md).

@@ -1,11 +1,15 @@
 # Binaries and build artifacts
+*.exe
+*.bin
+*.out
 citadel-sentry
 citadel-sentry.exe
 citadel-seeder
 citadel-sentry-linux-dev
 citadel-sentry-windows-dev.exe
 .citadel-release.lock
-build/bin/
+build/
+bin/
 releases/
 
 # Node & Nuxt artifacts
@@ -23,7 +27,11 @@ frontend/wailsjs/
 
 # Temporary / Config files
 *.log
+*.tmp
+*.bak
+scratch/
 .DS_Store
+Thumbs.db
 .env
 .env.*
 !.env.example
@@ -40,3 +48,9 @@ graphify-out/
 .agents/
 __pycache__/
 PROJECT.md
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
