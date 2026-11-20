@@ -142,6 +142,8 @@
     "soundDesc": "Play audio cues upon server join, seeding finish, and target completion.",
     "autoUpdateCheck": "Automatic update check",
     "autoUpdateCheckDesc": "Check for new versions on GitHub every time Citadel Sentry starts.",
+    "telemetry": "Anonymous Technical Telemetry",
+    "telemetryDesc": "Send technical performance data for workload optimization without personal information.",
     "checkUpdatesTitle": "Application updates",
     "checkUpdatesDesc": "Manually check for new versions and install updates.",
     "checkNow": "Check now",
@@ -396,5 +398,16 @@
     "restarting": "Verifying checksum and restarting...",
     "error": "Failed to apply update",
     "stopSeedingFirst": "Please stop seeding before applying the update."
+  },
+  "telemetry": {
+    "badge": "Optimization",
+    "modalTitle": "Anonymous Technical Telemetry",
+    "modalDesc": "Help us improve background seeding: only technical workload data (game resource consumption and hardware models) is collected for optimization under different hardware. No personal data is collected.",
+    "acceptButton": "Enable",
+    "declineButton": "No, thanks",
+    "declinedTitle": "Choice Saved",
+    "declinedDesc": "Telemetry is disabled. If you want to enable it later, you can always do so in:",
+    "declinedPath": "Settings → General Parameters",
+    "finishButton": "Got it"
   }
 }

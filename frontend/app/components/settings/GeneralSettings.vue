@@ -117,6 +117,15 @@ const handleLanguageChange = (val: string | number) => {
           @update:model-value="updateField('autoUpdateCheck', $event)"
         />
       </div>
+
+      <div class="pt-3">
+        <BaseToggle
+          :model-value="modelValue.telemetryOptIn === true"
+          :label="$t('settings.telemetry')"
+          :description="$t('settings.telemetryDesc')"
+          @update:model-value="updateField('telemetryOptIn', $event)"
+        />
+      </div>
     </div>
 
     <!-- Manual Update Check Section -->

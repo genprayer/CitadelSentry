@@ -25,7 +25,11 @@ func (t *windowsPriorityTarget) currentPriority() (uint32, error) {
 	return windows.GetPriorityClass(t.handle)
 }
 func (t *windowsPriorityTarget) setPriority(priority uint32) error {
-	return windows.SetPriorityClass(t.handle, priority)
+	err := windows.SetPriorityClass(t.handle, priority)
+	if errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		return fmt.Errorf("set process priority: %w", ErrPriorityAccessDenied)
+	}
+	return err
 }
 func (t *windowsPriorityTarget) close() error { return windows.CloseHandle(t.handle) }
 
@@ -33,6 +37,9 @@ func openWindowsPriorityTarget(processID uint32) (*windowsPriorityTarget, bool, 
 	handle, err := windows.OpenProcess(windows.PROCESS_SET_INFORMATION|windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, processID)
 	if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
 		return nil, false, nil
+	}
+	if errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		return nil, false, fmt.Errorf("open priority process %d: %w", processID, ErrPriorityAccessDenied)
 	}
 	if err != nil {
 		return nil, false, fmt.Errorf("open priority process %d: %w", processID, err)

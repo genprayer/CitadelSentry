@@ -40,16 +40,23 @@ type BackupManifest struct {
 	Files               []BackupEntry `json:"files,omitempty"`
 }
 
+// PatchedBackup records a historical patch file generated during a session.
+type PatchedBackup struct {
+	Name   string `json:"name"`
+	Sha256 string `json:"sha256"`
+}
+
 // BackupEntry records one file changed for a potato session.
 type BackupEntry struct {
-	Path          string  `json:"path"`
-	BackupName    string  `json:"backupName,omitempty"`
-	PatchedName   string  `json:"patchedName,omitempty"`
-	Sha256        string  `json:"sha256,omitempty"`
-	SizeBytes     int64   `json:"sizeBytes"`
-	PatchedSha256 string  `json:"patchedSha256"`
-	Existed       bool    `json:"existed"`
-	OriginalMode  *uint32 `json:"originalMode,omitempty"`
+	Path            string          `json:"path"`
+	BackupName      string          `json:"backupName,omitempty"`
+	PatchedName     string          `json:"patchedName,omitempty"`
+	Sha256          string          `json:"sha256,omitempty"`
+	SizeBytes       int64           `json:"sizeBytes"`
+	PatchedSha256   string          `json:"patchedSha256"`
+	Existed         bool            `json:"existed"`
+	OriginalMode    *uint32         `json:"originalMode,omitempty"`
+	PreviousPatches []PatchedBackup `json:"previousPatches,omitempty"`
 }
 
 // ConfigManager handles backup, modification (potato mode), and restoration of Squad configs.

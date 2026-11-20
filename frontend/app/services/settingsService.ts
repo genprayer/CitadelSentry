@@ -10,6 +10,10 @@ export class SettingsService {
     return settingsAdapter.saveSettings(settings)
   }
 
+  public async setTelemetryOptIn(optIn: boolean): Promise<boolean> {
+    return settingsAdapter.setTelemetryOptIn(optIn)
+  }
+
   public async restoreSquadConfig(): Promise<boolean> {
     return settingsAdapter.restoreSquadConfig()
   }

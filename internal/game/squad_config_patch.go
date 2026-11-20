@@ -54,9 +54,6 @@ func potatoSettingValues(fpsLimit int, lowResolution bool, gpu ...platform.GPUIn
 	} else {
 		userValues["upscalemode"] = "1"
 		userValues["fsrquality"] = "(Value=4)"
-		if g.Vendor == platform.GPUVendorAMD {
-			userValues["selectedframegeneration"] = "AMDFG"
-		}
 	}
 
 	if lowResolution {

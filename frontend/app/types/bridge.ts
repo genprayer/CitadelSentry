@@ -72,6 +72,8 @@ export interface WailsGoAppApi {
   // Settings
   GetSettings(): Promise<AppSettings>
   SaveSettings(settings: AppSettings): Promise<boolean>
+  SetTelemetryOptIn(optIn: boolean): Promise<void>
+  GetTelemetryPreview(): Promise<any>
   GetPotatoSettings(): Promise<import('./settings').PotatoSettings>
   SavePotatoSettings(settings: import('./settings').PotatoSettings): Promise<boolean>
   RestoreSquadConfig(): Promise<boolean>

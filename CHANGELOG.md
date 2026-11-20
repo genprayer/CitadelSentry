@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.2 — 2026-11-20
+
+- **Crash-Free Priority Handling**: Catch all process priority and platform errors (`ERROR_ACCESS_DENIED`, snapshot errors, invalid handles) in `applySquadPriorityForRun`. Log warnings and continue seeding normally instead of aborting with `StateFailed` ("СИДИНГ НЕ УДАЛСЯ").
+- **Transactional FPS Updates & Bounded History**: Implement bounded ring-buffer (`maxPreviousPatchesPerFile = 8`) in `BackupEntry.PreviousPatches` with SHA-256 validation. Eliminate naming index assumptions, supporting reliable restoration across crashes or skipped secondary configs while preserving player mid-session changes.
+- **Dynamic Potato Mode Clamping**: Boost to 60 FPS during server loading and clamp down to 15 FPS once in-game connection is confirmed. Emit `squad:potato_fps_error` to UI upon update failures without breaking the seed run.
+- **UE4 Engine.ini Deep Optimization**: Disable volumetric fog, volumetric clouds, distance field shadows, cloth physics, and cap CPU particles to 1 in Potato Mode.
+- **GPU Compatibility**: Remove forced AMD Frame Generation to avoid GPU overhead and ensure compatibility across older GPU architectures.
+- **Anonymous Technical Telemetry & One-Time Consent Modal**: Introduce an opt-in technical telemetry subsystem for hardware and memory monitoring without collecting any personal data. Includes a one-time consent modal on first run after update, and a settings toggle in General Settings.
+
+
 ## Unreleased — publication blocked pending native acceptance
 
 - In app.go, JoinServerDirect now verifies in-game invitation processing before returning success to the UI. If Squad immediately rejects the invitation (e.g. lobby build mismatch, missing EOS room ID, or busy session search), the failure is surfaced directly to the user rather than claiming a successful join upon simple URI handoff.

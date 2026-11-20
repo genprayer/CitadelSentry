@@ -205,7 +205,7 @@ func TestAppManualRestoreRecoversGraphicsEvenIfPriorityRecoveryFails(t *testing.
 	}
 }
 
-func TestAppPriorityFailureAbortsMissionAndKeepsVerifiedRecovery(t *testing.T) {
+func TestAppPriorityFailureDoesNotAbortSeedingAndPreservesBackup(t *testing.T) {
 	app, adapter, original := newTestApp(t)
 	settings := app.cfgMgr.Get()
 	settings.Potato.AutoRestoreOnExit = false
@@ -223,11 +223,32 @@ func TestAppPriorityFailureAbortsMissionAndKeepsVerifiedRecovery(t *testing.T) {
 	if err := app.seeder.Start(ctx, plan, []citadel.Server{server}); err != nil {
 		t.Fatal(err)
 	}
+
+	// 1. Simulate an arbitrary platform failure (distinct from Access Denied, e.g. snapshot failure)
 	adapter.isSquadRunning.Store(true)
-	adapter.priorityError = errors.New("original priority could not be verified")
-	_, _, err := app.applySquadPriorityForRun(app.seeder.CurrentRunID())
-	if err == nil || app.seeder.GetSession().State != seed.StateFailed {
-		t.Fatal("priority failure left the seed mission running")
+	adapter.priorityError = errors.New("kernel snapshot error or unexpected Win32 failure")
+
+	// 2. Applying priority should NOT fail the run or return an error to engine
+	isApplied, isCurrent, err := app.applySquadPriorityForRun(app.seeder.CurrentRunID())
+	if err != nil {
+		t.Fatalf("unexpected error returned from applySquadPriorityForRun: %v", err)
+	}
+	if !isCurrent {
+		t.Fatal("expected run to remain current")
+	}
+	if !isApplied {
+		t.Fatal("expected isApplied to be true to halt polling after platform error")
+	}
+
+	// 3. Crucial assertion: the seeding mission must REMAIN ACTIVE!
+	session := app.seeder.GetSession()
+	if !session.State.IsActive() {
+		t.Fatalf("priority failure aborted active seed mission; state=%s, error=%s", session.State, session.ErrorMessage)
+	}
+
+	// 4. Clean shutdown works normally
+	if err := app.seeder.Stop(); err != nil {
+		t.Fatal(err)
 	}
 	waitCtx, stopWaiting := context.WithTimeout(context.Background(), time.Second)
 	defer stopWaiting()
@@ -238,12 +259,13 @@ func TestAppPriorityFailureAbortsMissionAndKeepsVerifiedRecovery(t *testing.T) {
 		t.Fatal("priority failure discarded the original settings backup")
 	}
 	adapter.isSquadRunning.Store(false)
-	if err := app.restoreSquadAutomaticallyIfStopped(); err != nil {
-		t.Fatal(err)
+	ok, err := app.RestoreSquadConfig()
+	if !ok || err != nil {
+		t.Fatalf("manual squad restore failed: ok=%v, err=%v", ok, err)
 	}
 	current, err := os.ReadFile(app.squadConfig.ConfigPath())
 	if err != nil || !bytes.Equal(current, original) || app.squadConfig.HasActiveBackup() {
-		t.Fatalf("priority failure did not restore verified settings: %v", err)
+		t.Fatalf("settings were not restored cleanly: %v", err)
 	}
 }
 

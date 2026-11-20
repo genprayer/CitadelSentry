@@ -187,6 +187,14 @@ export const useSettingsStore = defineStore('settings', {
 
     resetToDefaults() {
       this.settings = settingsService.getDefaultSettings()
+    },
+
+    async setTelemetryOptIn(optIn: boolean) {
+      this.settings.general.telemetryOptIn = optIn
+      this.settings.general.telemetryPromptShown = true
+      this.draftSettings.general.telemetryOptIn = optIn
+      this.draftSettings.general.telemetryPromptShown = true
+      await settingsService.setTelemetryOptIn(optIn)
     }
   }
 })

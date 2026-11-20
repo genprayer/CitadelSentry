@@ -11,7 +11,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     notificationsEnabled: true,
     soundEnabled: true,
     language: 'ru',
-    autoUpdateCheck: true
+    autoUpdateCheck: true,
+    telemetryOptIn: false,
+    telemetryPromptShown: false
   },
   seed: {
     defaultTargetPlayers: 50,
@@ -68,6 +70,23 @@ export class WailsSettingsAdapter {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
       return true
+    }
+
+    return false
+  }
+
+  public async setTelemetryOptIn(optIn: boolean): Promise<boolean> {
+    if (bridgeAdapter.isAvailable() && window.go?.main?.App?.SetTelemetryOptIn) {
+      await window.go.main.App.SetTelemetryOptIn(optIn)
+      return true
+    }
+
+    // Local fallback for standalone browser preview
+    if (typeof window !== 'undefined') {
+      const current = await this.getSettings()
+      current.general.telemetryOptIn = optIn
+      current.general.telemetryPromptShown = true
+      return await this.saveSettings(current)
     }
 
     return false

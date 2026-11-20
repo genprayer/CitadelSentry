@@ -6,6 +6,7 @@ import { useServers } from '~/composables/useServers'
 import { useUpdater } from '~/composables/useUpdater'
 import PowerActionModal from '~/components/app/PowerActionModal.vue'
 import UpdateAvailableModal from '~/components/app/UpdateAvailableModal.vue'
+import TelemetryConsentModal from '~/components/app/TelemetryConsentModal.vue'
 
 const { checkStatus, initBridgeListeners: initBridgeStatusListeners, disposeBridgeListeners: disposeBridgeStatusListeners } = useBridge()
 const { initBridgeListeners, disposeBridgeListeners, fetchCurrentSession } = useSeed()
@@ -59,5 +60,6 @@ onUnmounted(() => {
 
     <PowerActionModal />
     <UpdateAvailableModal />
+    <TelemetryConsentModal />
   </div>
 </template>

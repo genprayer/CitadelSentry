@@ -37,3 +37,6 @@ config.json
 .playwright-cli/
 output/
 graphify-out/
+.agents/
+__pycache__/
+PROJECT.md

@@ -8,6 +8,8 @@ export interface GeneralSettings {
   soundEnabled: boolean
   language: 'ru' | 'en'
   autoUpdateCheck: boolean
+  telemetryOptIn?: boolean
+  telemetryPromptShown?: boolean
 }
 
 export interface SeedSettings {

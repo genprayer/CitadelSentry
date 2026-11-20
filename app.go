@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"citadel-seeder/internal/logger"
 	"citadel-seeder/internal/platform"
 	"citadel-seeder/internal/seed"
+	"citadel-seeder/internal/telemetry"
 	"citadel-seeder/internal/updater"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -37,6 +39,7 @@ type App struct {
 	isPreparingPotato atomic.Bool
 	updateInProgress  atomic.Bool
 	updater           *updater.Manager
+	telemetryReporter *telemetry.Reporter
 	operationMu       sync.Mutex
 	directJoinCancel  context.CancelFunc
 	directJoinID      uint64
@@ -82,6 +85,20 @@ func NewApp() (*App, error) {
 		updater:     updater.NewManager(applicationVersion()),
 	}
 
+	gpu := plt.DetectGPU()
+	reporter := telemetry.NewReporter(
+		initialSettings.General.TelemetryOptIn,
+		initialSettings.WebApiBaseUrl+"/api/telemetry/sentry",
+		applicationVersion(),
+	)
+	reporter.SetHardware(telemetry.HardwareConfig{
+		OSCaption:     plt.Name(),
+		GPUModel:      gpu.Model,
+		GPUVendor:     string(gpu.Vendor),
+		SentryVersion: applicationVersion(),
+	})
+	app.telemetryReporter = reporter
+
 	app.seeder = seed.NewEngine(plt, gc, cc, cfgMgr, func(session seed.Session) {
 		if app.ctx != nil && !app.isShuttingDown.Load() {
 			wruntime.EventsEmit(app.ctx, "citadel:seed:state_changed", session)
@@ -108,10 +125,31 @@ func NewApp() (*App, error) {
 		}
 		if connected {
 			logger.Info("In-game connection confirmed; clamping FPS to Potato Mode target", "targetFps", potatoCfg.FpsLimit)
-			_ = app.squadConfig.UpdateActivePotatoFps(potatoCfg.FpsLimit)
+			if err := app.squadConfig.UpdateActivePotatoFps(potatoCfg.FpsLimit); err != nil {
+				logger.Warn("Unable to apply in-game FPS cap; preserving seeding session", "error", err)
+				if app.ctx != nil && !app.isShuttingDown.Load() {
+					wruntime.EventsEmit(app.ctx, "squad:potato_fps_error", map[string]any{
+						"error":     err.Error(),
+						"targetFps": potatoCfg.FpsLimit,
+						"phase":     "connected",
+					})
+				}
+			}
+			if app.telemetryReporter != nil && app.telemetryReporter.IsOptIn() {
+				app.telemetryReporter.RecordSample(telemetry.CollectDynamicSample(telemetry.CheckpointPostLaunch))
+			}
 		} else {
 			logger.Info("In-game connection released; boosting to 60 FPS for fast loading", "fps", 60)
-			_ = app.squadConfig.UpdateActivePotatoFps(60)
+			if err := app.squadConfig.UpdateActivePotatoFps(60); err != nil {
+				logger.Warn("Unable to restore loading FPS cap; preserving seeding session", "error", err)
+				if app.ctx != nil && !app.isShuttingDown.Load() {
+					wruntime.EventsEmit(app.ctx, "squad:potato_fps_error", map[string]any{
+						"error":     err.Error(),
+						"targetFps": 60,
+						"phase":     "loading",
+					})
+				}
+			}
 		}
 		if app.ctx != nil && !app.isShuttingDown.Load() {
 			wruntime.EventsEmit(app.ctx, "squad:config_status", app.squadConfig.GetStatus())
@@ -311,6 +349,9 @@ func (a *App) SaveSettings(settings config.AppSettings) bool {
 	}
 	settings = a.cfgMgr.Get()
 	a.citadel.SetBaseURL(settings.WebApiBaseUrl)
+	if a.telemetryReporter != nil {
+		a.telemetryReporter.SetOptIn(settings.General.TelemetryOptIn)
+	}
 	logger.Banner("APPLICATION SETTINGS UPDATED",
 		fmt.Sprintf("WebApi BaseURL:        %s", settings.WebApiBaseUrl),
 		fmt.Sprintf("General:               lang=%s, launchOnStartup=%t, minimizeToTray=%t, closeToTray=%t, notifications=%t",
@@ -323,6 +364,30 @@ func (a *App) SaveSettings(settings config.AppSettings) bool {
 			settings.Power.PreventSleepDuringSeed),
 	)
 	return true
+}
+
+// SetTelemetryOptIn updates user consent for anonymous technical telemetry.
+func (a *App) SetTelemetryOptIn(optIn bool) error {
+	a.operationMu.Lock()
+	defer a.operationMu.Unlock()
+	cfg := a.cfgMgr.Get()
+	cfg.General.TelemetryOptIn = optIn
+	cfg.General.TelemetryPromptShown = true
+	if err := a.cfgMgr.Save(cfg); err != nil {
+		return err
+	}
+	if a.telemetryReporter != nil {
+		a.telemetryReporter.SetOptIn(optIn)
+	}
+	return nil
+}
+
+// GetTelemetryPreview returns current sanitized telemetry payload for user inspection.
+func (a *App) GetTelemetryPreview() (telemetry.Payload, error) {
+	if a.telemetryReporter == nil {
+		return telemetry.Payload{}, errors.New("telemetry reporter not initialized")
+	}
+	return a.telemetryReporter.GetPreviewPayload()
 }
 
 // GetServers retrieves the fleet servers list
@@ -466,12 +531,13 @@ func (a *App) StartSeed(plan seed.Plan) (result seed.Session, startError error) 
 		return seed.Session{}, err
 	}
 	potatoCfg := a.cfgMgr.Get().Potato
-	if err := a.platform.RestoreProcessPriority(); err != nil {
+	if err := a.platform.RestoreProcessPriority(); err != nil && !isPriorityAccessDenied(err) {
 		return seed.Session{}, fmt.Errorf("restore previous process priority before seeding: %w", err)
 	}
 	if potatoCfg.Enabled && potatoCfg.LowCpuPriority {
 		if err := a.platform.CheckProcessPrioritySupport(); err != nil {
-			return seed.Session{}, err
+			logger.Warn("Optional process priority optimization is unavailable; continuing seeding", "error", err)
+			potatoCfg.LowCpuPriority = false // Skip for this run; do not rewrite user preferences.
 		}
 	}
 	if potatoCfg.Enabled {
@@ -561,8 +627,23 @@ func (a *App) StartSeed(plan seed.Plan) (result seed.Session, startError error) 
 		a.potatoRunID = a.seeder.CurrentRunID()
 	}
 	session := a.seeder.GetSession()
+	if a.telemetryReporter != nil && a.telemetryReporter.IsOptIn() {
+		a.telemetryReporter.RecordSample(telemetry.CollectDynamicSample(telemetry.CheckpointT0))
+	}
 	logger.Info("Seed mission successfully launched", "state", session.State, "queueCount", len(queue))
 	return session, nil
+}
+
+// isPriorityAccessDenied checks if priority modification was blocked by OS permissions or EAC.
+func isPriorityAccessDenied(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, platform.ErrPriorityAccessDenied) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "access is denied") || strings.Contains(msg, "access denied")
 }
 
 // manageSquadPriority observes each game process throughout the owned queue.
@@ -581,16 +662,17 @@ func (a *App) manageSquadPriority(ctx context.Context, runID uint64) {
 				return
 			}
 			if err != nil {
-				logger.Error("Requested Squad CPU priority failed", "error", err)
+				logger.Warn("Squad CPU priority polling halted due to error; continuing seeding with normal priority", "error", err)
 				return
 			}
 			if isApplied {
 				hasObservedGame = true
+				return
 			}
 			if !hasObservedGame && time.Since(startedAt) >= priorityStartupTimeout {
-				a.operationMu.Lock()
-				a.seeder.AbortRun(runID, fmt.Errorf("Squad was not observed before the CPU priority preparation timeout"))
-				a.operationMu.Unlock()
+				// Priority adjustment is an optional optimization, not a seeding
+				// prerequisite. Startup detection delays must not abort a live run.
+				logger.Warn("Squad was not observed before priority optimization timeout; continuing seeding normally")
 				return
 			}
 		}
@@ -598,6 +680,7 @@ func (a *App) manageSquadPriority(ctx context.Context, runID uint64) {
 }
 
 // applySquadPriorityForRun prevents an old polling task from changing a later game.
+// CPU priority optimization is strictly optional and must never abort a live seeding session.
 func (a *App) applySquadPriorityForRun(runID uint64) (isApplied bool, isCurrent bool, err error) {
 	a.operationMu.Lock()
 	defer a.operationMu.Unlock()
@@ -607,7 +690,8 @@ func (a *App) applySquadPriorityForRun(runID uint64) (isApplied bool, isCurrent 
 	isCurrent, err = a.seeder.PerformRunOperation(runID, func() error {
 		isRunning, err := a.platform.CheckSquadRunning()
 		if err != nil {
-			return fmt.Errorf("verify Squad before CPU priority change: %w", err)
+			logger.Warn("Unable to verify Squad process for CPU priority adjustment; continuing seeding normally", "error", err)
+			return nil
 		}
 		if !isRunning {
 			return nil
@@ -616,7 +700,14 @@ func (a *App) applySquadPriorityForRun(runID uint64) (isApplied bool, isCurrent 
 			if errors.Is(err, platform.ErrPriorityProcessPending) {
 				return nil
 			}
-			return fmt.Errorf("apply requested Squad CPU priority: %w", err)
+			if isPriorityAccessDenied(err) {
+				logger.Warn("Squad CPU priority reduction skipped: restricted by Easy Anti-Cheat or OS permissions; continuing with normal priority", "error", err)
+				isApplied = true
+				return nil
+			}
+			logger.Warn("Squad CPU priority adjustment skipped due to unexpected platform error; continuing with normal priority", "error", err)
+			isApplied = true
+			return nil
 		}
 		isApplied = true
 		return nil
@@ -650,12 +741,31 @@ func (a *App) StopSeed() (seed.Session, error) {
 		return a.seeder.GetSession(), errors.Join(err, cancelErr)
 	}
 	priorityError := a.platform.RestoreProcessPriority()
+	if isPriorityAccessDenied(priorityError) {
+		logger.Warn("Squad CPU priority restoration skipped: restricted by permissions", "error", priorityError)
+		priorityError = nil
+	}
 	if a.squadConfig != nil && a.squadConfig.HasActiveBackup() && a.cfgMgr.Get().Potato.AutoRestoreOnExit {
 		if err := a.restoreSquadIfStopped(); err != nil {
 			logger.Error("Could not restore Squad settings after stopping seed", "error", err)
 		}
 	}
 	session := a.seeder.GetSession()
+	if a.telemetryReporter != nil && a.telemetryReporter.IsOptIn() {
+		sample := telemetry.CollectDynamicSample(telemetry.CheckpointExit)
+		a.telemetryReporter.RecordSample(sample)
+		a.telemetryReporter.SetDiagnostics(telemetry.SeedingDiagnostics{
+			PotatoModeEnabled:   a.cfgMgr.Get().Potato.Enabled,
+			FpsLimitTarget:      a.cfgMgr.Get().Potato.FpsLimit,
+			LowResolutionActive: a.cfgMgr.Get().Potato.LowResolution,
+			ExitReason:          string(session.State),
+		})
+		go func(rep *telemetry.Reporter) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = rep.Dispatch(ctx)
+		}(a.telemetryReporter)
+	}
 	logger.Info("Seed mission stopped", "state", session.State)
 	return session, errors.Join(cancelErr, priorityError)
 }
@@ -783,7 +893,7 @@ func (a *App) JoinServerDirect(serverID string) (bool, error) {
 	if a.seeder != nil && a.seeder.HasRunningWorker() {
 		return false, fmt.Errorf("seeding is still stopping; retry direct join after it finishes")
 	}
-	if err := a.platform.RestoreProcessPriority(); err != nil {
+	if err := a.platform.RestoreProcessPriority(); err != nil && !isPriorityAccessDenied(err) {
 		return false, fmt.Errorf("restore Squad CPU priority before direct join: %w", err)
 	}
 	isRunning, _ := a.platform.CheckSquadRunning()
@@ -1138,6 +1248,10 @@ func (a *App) restoreSquadAutomaticallyIfStopped() error {
 		return nil
 	}
 	priorityError := a.platform.RestoreProcessPriority()
+	if isPriorityAccessDenied(priorityError) {
+		logger.Warn("Squad CPU priority restoration skipped: restricted by permissions", "error", priorityError)
+		priorityError = nil
+	}
 	if a.squadConfig == nil {
 		return priorityError
 	}

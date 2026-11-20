@@ -53,9 +53,10 @@ func equalIniValue(left, right string) bool {
 	return leftErr == nil && rightErr == nil && leftNumber == rightNumber
 }
 
-// mergePotatoIni restores recorded keys missing or still matching Sentry's patch.
+// mergePotatoIni restores recorded keys missing or still matching Sentry's patch
+// (including intermediate older patches from this session).
 // Changes made by Squad or the player to other keys remain in place.
-func mergePotatoIni(original, patched, current []byte) ([]byte, error) {
+func mergePotatoIni(original, patched, current []byte, olderPatches ...[]byte) ([]byte, error) {
 	originalSettings, originalDuplicates := iniSettings(original)
 	patchedSettings, patchedDuplicates := iniSettings(patched)
 	currentSettings, currentDuplicates := iniSettings(current)
@@ -75,7 +76,17 @@ func mergePotatoIni(original, patched, current []byte) ([]byte, error) {
 			}
 			continue
 		}
-		if !equalIniValue(currentSetting.value, patchedSetting.value) {
+		matchesPatch := equalIniValue(currentSetting.value, patchedSetting.value)
+		if !matchesPatch {
+			for _, older := range olderPatches {
+				olderSettings, _ := iniSettings(older)
+				if oldSetting, exists := olderSettings[id]; exists && equalIniValue(currentSetting.value, oldSetting.value) {
+					matchesPatch = true
+					break
+				}
+			}
+		}
+		if !matchesPatch {
 			continue
 		}
 		if hadOriginal {

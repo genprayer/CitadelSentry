@@ -45,7 +45,13 @@ export function validateAppSettings(value: unknown): AppSettings {
   if (general.autoUpdateCheck === undefined) {
     general.autoUpdateCheck = true
   }
-  requireBooleans(general, 'general', ['launchOnStartup', 'minimizeToTray', 'closeToTray', 'notificationsEnabled', 'soundEnabled', 'autoUpdateCheck'])
+  if (general.telemetryOptIn === undefined) {
+    general.telemetryOptIn = false
+  }
+  if (general.telemetryPromptShown === undefined) {
+    general.telemetryPromptShown = false
+  }
+  requireBooleans(general, 'general', ['launchOnStartup', 'minimizeToTray', 'closeToTray', 'notificationsEnabled', 'soundEnabled', 'autoUpdateCheck', 'telemetryOptIn', 'telemetryPromptShown'])
   requireBooleans(power, 'power', ['preventSleepDuringSeed'])
   requireBooleans(potato, 'potato', ['enabled', 'lowResolution', 'lowCpuPriority', 'autoRestoreOnExit'])
   if (general.language !== 'ru' && general.language !== 'en') throw new Error('Unsupported saved language')

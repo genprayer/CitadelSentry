@@ -23,6 +23,9 @@ const (
 // ErrPriorityProcessPending means no supported game process is available yet.
 var ErrPriorityProcessPending = errors.New("supported Squad game process is not available yet")
 
+// ErrPriorityAccessDenied means anti-cheat or Windows permissions restricted priority adjustments.
+var ErrPriorityAccessDenied = errors.New("access denied by anti-cheat or OS permissions")
+
 type priorityIdentity struct {
 	ProcessID    uint32 `json:"processId"`
 	CreationTime uint64 `json:"creationTime"`

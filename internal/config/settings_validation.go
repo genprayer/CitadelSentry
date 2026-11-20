@@ -113,7 +113,7 @@ func requireSettingsFields(fields map[string]json.RawMessage, kind reflect.Type,
 			if name == "seed.defaultPostSeedAction" && (legacyPowerAction == "sleep" || legacyPowerAction == "shutdown") {
 				continue
 			}
-			if name == "general.autoUpdateCheck" {
+			if name == "general.autoUpdateCheck" || name == "general.telemetryOptIn" || name == "general.telemetryPromptShown" {
 				continue
 			}
 			return fmt.Errorf("saved application setting %s is missing", name)

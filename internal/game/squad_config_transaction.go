@@ -19,7 +19,10 @@ import (
 	"citadel-seeder/internal/platform"
 )
 
-const backupManifestVersion = 2
+const (
+	backupManifestVersion     = 2
+	maxPreviousPatchesPerFile = 8
+)
 
 type configPatch struct {
 	entry    BackupEntry
@@ -437,6 +440,16 @@ func patchEngineIni(original []byte, fpsLimit int) []byte {
 		{"r.Streaming.MaxTempMemoryAllowed", "20"},
 		{"r.Shaders.Optimize", "1"},
 		{"r.CreateShadersOnLoad", "0"},
+		{"r.VolumetricFog", "0"},
+		{"r.VolumetricCloud", "0"},
+		{"r.DistanceFieldShadowing", "0"},
+		{"r.BloomQuality", "0"},
+		{"r.EyeAdaptationQuality", "0"},
+		{"r.LensFlareQuality", "0"},
+		{"r.LightShaftQuality", "0"},
+		{"r.PostProcessAAQuality", "0"},
+		{"fx.MaxCPUParticlesPerEmitter", "1"},
+		{"p.ClothPhysics", "0"},
 	}
 	for _, s := range engineSettings {
 		text = setIniSectionKey(text, "SystemSettings", s.key, s.val)
@@ -591,7 +604,34 @@ func (m *ConfigManager) restoreOriginalLocked() error {
 		if entry.PatchedName == "" {
 			return fmt.Errorf("Squad changed %s during Potato Mode; refusing to overwrite player changes", entry.Path)
 		}
-		merged, mergeErr := mergePotatoIni(backup, patched, current)
+
+		// Collect older session patches tracked explicitly in entry.PreviousPatches
+		var olderPatches [][]byte
+		matchesAllOlder := false
+		for _, prev := range entry.PreviousPatches {
+			if prev.Name == "" || filepath.Base(prev.Name) != prev.Name {
+				return fmt.Errorf("invalid historical patch name %q for %s", prev.Name, entry.Path)
+			}
+			oldBytes, err := os.ReadFile(filepath.Join(m.backupDir, prev.Name))
+			if err != nil {
+				return fmt.Errorf("read historical patch %s for %s: %w", prev.Name, entry.Path, err)
+			}
+			if checksum(oldBytes) != prev.Sha256 {
+				return fmt.Errorf("historical patch %s checksum mismatch for %s", prev.Name, entry.Path)
+			}
+			if currentHash == prev.Sha256 {
+				matchesAllOlder = true
+				break
+			}
+			olderPatches = append(olderPatches, oldBytes)
+		}
+		if matchesAllOlder {
+			item.action = "restore"
+			items = append(items, item)
+			continue
+		}
+
+		merged, mergeErr := mergePotatoIni(backup, patched, current, olderPatches...)
 		if mergeErr != nil {
 			return fmt.Errorf("merge Squad changes in %s: %w", entry.Path, mergeErr)
 		}
@@ -668,32 +708,160 @@ func (m *ConfigManager) updateActiveFpsLocked(fpsLimit int) error {
 	if !manifest.Active {
 		return errors.New("no active Potato Mode session to update")
 	}
+	if err := m.verifyRecoveryIntegrityLocked(manifest); err != nil {
+		return fmt.Errorf("verify backup integrity before FPS update: %w", err)
+	}
+
+	type updateItem struct {
+		entryIndex     int
+		path           string
+		oldPatchedName string
+		newPatchedName string
+		newPatchedData []byte
+		newPatchedHash string
+		livePatched    []byte
+		mode           os.FileMode
+	}
+	txID := time.Now().UnixNano()
+	items := make([]updateItem, 0, len(manifest.Files))
+
+	// Step 1: Pre-calculate patched templates from authoritative baseline patch records,
+	// NOT from player-modified live files, to avoid absorbing and wiping user changes.
 	for i, entry := range manifest.Files {
-		current, err := os.ReadFile(entry.Path)
-		if err != nil {
-			return fmt.Errorf("read active config %s: %w", entry.Path, err)
-		}
-		var patched []byte
-		if filepath.Base(entry.Path) == "Engine.ini" {
-			patched = patchEngineIni(current, fpsLimit)
+		var basePatch []byte
+		if entry.PatchedName != "" {
+			var readErr error
+			basePatch, readErr = os.ReadFile(filepath.Join(m.backupDir, entry.PatchedName))
+			if readErr != nil {
+				return fmt.Errorf("read baseline Potato patch %s: %w", entry.PatchedName, readErr)
+			}
+		} else if entry.Existed && entry.BackupName != "" {
+			var readErr error
+			basePatch, readErr = os.ReadFile(filepath.Join(m.backupDir, entry.BackupName))
+			if readErr != nil {
+				return fmt.Errorf("read original backup %s: %w", entry.BackupName, readErr)
+			}
 		} else {
-			text := string(current)
+			return fmt.Errorf("entry %s has neither patch nor backup record", entry.Path)
+		}
+
+		// Calculate new authoritative Sentry patch (contains only Sentry's expected keys)
+		var newPatched []byte
+		if filepath.Base(entry.Path) == "Engine.ini" {
+			newPatched = patchEngineIni(basePatch, fpsLimit)
+		} else {
+			text := string(basePatch)
 			newFpsVal := fmt.Sprintf("%.6f", float64(fpsLimit))
-			settings, _ := iniSettings(current)
+			settings, _ := iniSettings(basePatch)
 			for _, setting := range settings {
 				if strings.ToLower(setting.key) == "frameratelimit" {
 					text = setIniSectionKey(text, setting.section, setting.key, newFpsVal)
 				}
 			}
-			patched = []byte(text)
+			newPatched = []byte(text)
 		}
-		if err := fileutil.WriteFileAtomic(entry.Path, patched, 0o600); err != nil {
-			return fmt.Errorf("write updated active config %s: %w", entry.Path, err)
+
+		// Read current live file from disk (which may contain player's mid-session changes)
+		currentLive, err := os.ReadFile(entry.Path)
+		if err != nil {
+			return fmt.Errorf("read active game config %s: %w", entry.Path, err)
 		}
-		manifest.Files[i].PatchedSha256 = checksum(patched)
-		if entry.PatchedName != "" {
-			_ = fileutil.WriteFileAtomic(filepath.Join(m.backupDir, entry.PatchedName), patched, 0o600)
+
+		// In the live file, we ONLY update the FPS limit, preserving player's other changes!
+		var livePatched []byte
+		if filepath.Base(entry.Path) == "Engine.ini" {
+			livePatched = patchEngineIni(currentLive, fpsLimit)
+		} else {
+			text := string(currentLive)
+			newFpsVal := fmt.Sprintf("%.6f", float64(fpsLimit))
+			settings, _ := iniSettings(currentLive)
+			for _, setting := range settings {
+				if strings.ToLower(setting.key) == "frameratelimit" {
+					text = setIniSectionKey(text, setting.section, setting.key, newFpsVal)
+				}
+			}
+			livePatched = []byte(text)
+		}
+
+		mode := os.FileMode(0o600)
+		if entry.OriginalMode != nil {
+			mode = writableConfigMode(os.FileMode(*entry.OriginalMode))
+		}
+
+		newPatchedName := fmt.Sprintf("session-%02d-%s.fps%d-tx%d.patched", i, filepath.Base(entry.Path), fpsLimit, txID)
+		items = append(items, updateItem{
+			entryIndex:     i,
+			path:           entry.Path,
+			oldPatchedName: entry.PatchedName,
+			newPatchedName: newPatchedName,
+			newPatchedData: newPatched,
+			newPatchedHash: checksum(newPatched),
+			livePatched:    livePatched,
+			mode:           mode,
+		})
+	}
+
+	// Step 2: Write all NEW .patched files to m.backupDir with their new immutable names.
+	// The old .patched files remain untouched on disk so recovery never breaks on crash!
+	for _, item := range items {
+		if err := fileutil.WriteFileAtomic(filepath.Join(m.backupDir, item.newPatchedName), item.newPatchedData, 0o600); err != nil {
+			for _, cleanupItem := range items {
+				if cleanupItem.newPatchedName != cleanupItem.oldPatchedName {
+					_ = os.Remove(filepath.Join(m.backupDir, cleanupItem.newPatchedName))
+				}
+			}
+			return fmt.Errorf("stage new immutable patch file %s: %w", item.newPatchedName, err)
 		}
 	}
-	return m.writeManifestLocked(manifest)
+
+	// Step 3: Update manifest in memory with the new filenames and hashes, tracking bounded historical patches
+	newManifest := manifest
+	newManifest.Files = make([]BackupEntry, len(manifest.Files))
+	copy(newManifest.Files, manifest.Files)
+	var evictedFiles []string
+	for _, item := range items {
+		entry := &newManifest.Files[item.entryIndex]
+		if entry.PatchedName != "" && entry.PatchedSha256 != "" {
+			entry.PreviousPatches = append(append([]PatchedBackup(nil), entry.PreviousPatches...), PatchedBackup{
+				Name:   entry.PatchedName,
+				Sha256: entry.PatchedSha256,
+			})
+		}
+		if len(entry.PreviousPatches) > maxPreviousPatchesPerFile {
+			excess := len(entry.PreviousPatches) - maxPreviousPatchesPerFile
+			for i := 0; i < excess; i++ {
+				evictedFiles = append(evictedFiles, entry.PreviousPatches[i].Name)
+			}
+			entry.PreviousPatches = append([]PatchedBackup(nil), entry.PreviousPatches[excess:]...)
+		}
+		entry.PatchedName = item.newPatchedName
+		entry.PatchedSha256 = item.newPatchedHash
+	}
+
+	// Step 4: Write updated manifest atomically to disk.
+	if err := m.writeManifestLocked(newManifest); err != nil {
+		for _, item := range items {
+			if item.newPatchedName != item.oldPatchedName {
+				_ = os.Remove(filepath.Join(m.backupDir, item.newPatchedName))
+			}
+		}
+		return fmt.Errorf("persist manifest with updated FPS patches: %w", err)
+	}
+
+	// Step 5: Atomically apply to live files with automatic rollback on error.
+	for _, item := range items {
+		if err := fileutil.WriteFileAtomic(item.path, item.livePatched, item.mode); err != nil {
+			rollbackErr := m.restoreOriginalLocked()
+			return errors.Join(fmt.Errorf("apply live game config %s: %w", item.path, err), rollbackErr)
+		}
+	}
+
+	// Step 6: Prune evicted historical patch files that are no longer referenced in the committed manifest.
+	for _, evicted := range evictedFiles {
+		if evicted != "" {
+			_ = os.Remove(filepath.Join(m.backupDir, evicted))
+		}
+	}
+
+	return nil
 }

@@ -38,6 +38,7 @@ export const useSettings = () => {
   const createRestorePoint = (name: string, description: string) => settingsStore.createRestorePoint(name, description)
   const restoreRestorePoint = (id: string) => settingsStore.restoreRestorePoint(id)
   const deleteRestorePoint = (id: string) => settingsStore.deleteRestorePoint(id)
+  const setTelemetryOptIn = (optIn: boolean) => settingsStore.setTelemetryOptIn(optIn)
 
   return {
     settings,
@@ -70,6 +71,7 @@ export const useSettings = () => {
     fetchRestorePoints,
     createRestorePoint,
     restoreRestorePoint,
-    deleteRestorePoint
+    deleteRestorePoint,
+    setTelemetryOptIn
   }
 }

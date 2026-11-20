@@ -71,8 +71,8 @@ func TestPotatoSettingValues_GPUVariants(t *testing.T) {
 	if userAMD["fsrquality"] != "(Value=4)" {
 		t.Errorf("AMD FSRQuality = %q, want (Value=4)", userAMD["fsrquality"])
 	}
-	if userAMD["selectedframegeneration"] != "AMDFG" {
-		t.Errorf("AMD SelectedFrameGeneration = %q, want AMDFG", userAMD["selectedframegeneration"])
+	if _, exists := userAMD["selectedframegeneration"]; exists {
+		t.Errorf("AMD should not have selectedframegeneration forced during potato mode")
 	}
 
 	// 3. Intel / NVIDIA GTX
@@ -199,7 +199,7 @@ sg.ReflectionQuality=3
 		"TextureStreamPoolSizeStorage=(Value=0)",
 		"UpscaleMode=1",
 		"FSRQuality=(Value=4)",
-		"SelectedFrameGeneration=AMDFG",
+		"SelectedFrameGeneration=None",
 		"sg.LandscapeQuality=0",
 		"sg.GlobalIlluminationQuality=0",
 		"sg.ReflectionQuality=0",

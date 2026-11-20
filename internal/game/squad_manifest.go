@@ -81,7 +81,7 @@ func decodeSquadManifest(data []byte) (BackupManifest, error) {
 		}
 		for key, value := range entries[index] {
 			switch key {
-			case "path", "backupName", "patchedName", "sha256", "sizeBytes", "patchedSha256", "existed", "originalMode":
+			case "path", "backupName", "patchedName", "sha256", "sizeBytes", "patchedSha256", "existed", "originalMode", "previousPatches":
 			default:
 				return BackupManifest{}, fmt.Errorf("unknown or noncanonical Squad backup file %d field %s", index, key)
 			}
@@ -115,6 +115,15 @@ func decodeSquadManifest(data []byte) (BackupManifest, error) {
 				return BackupManifest{}, fmt.Errorf("invalid or repeated Squad backup data name %q", name)
 			}
 			seenNames[name] = true
+		}
+		for prevIndex, prev := range entry.PreviousPatches {
+			if prev.Name == "" || filepath.Base(prev.Name) != prev.Name || prev.Name == "." || prev.Name == ".." || seenNames[prev.Name] {
+				return BackupManifest{}, fmt.Errorf("invalid or repeated Squad previous patch name %q in file %d", prev.Name, index)
+			}
+			if !isSquadChecksum(prev.Sha256) {
+				return BackupManifest{}, fmt.Errorf("invalid checksum for previous patch %q in file %d (index %d)", prev.Name, index, prevIndex)
+			}
+			seenNames[prev.Name] = true
 		}
 		if entry.Path == manifest.OriginalPath && (entry.Sha256 != manifest.Sha256 || entry.SizeBytes != manifest.SizeBytes || !entry.Existed) {
 			return BackupManifest{}, fmt.Errorf("primary Squad backup metadata does not match its file record")

@@ -20,6 +20,8 @@ type GeneralSettings struct {
 	SoundEnabled         bool   `json:"soundEnabled"`
 	Language             string `json:"language"`
 	AutoUpdateCheck      bool   `json:"autoUpdateCheck"`
+	TelemetryOptIn       bool   `json:"telemetryOptIn"`
+	TelemetryPromptShown bool   `json:"telemetryPromptShown"`
 }
 
 // SeedSettings defines seeding engine operational thresholds and preferences.
@@ -63,6 +65,8 @@ func DefaultSettings() AppSettings {
 			SoundEnabled:         true,
 			Language:             "ru",
 			AutoUpdateCheck:      true,
+			TelemetryOptIn:       false,
+			TelemetryPromptShown: false,
 		},
 		Seed: SeedSettings{
 			DefaultTargetPlayers:      50,

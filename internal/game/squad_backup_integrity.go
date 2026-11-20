@@ -36,6 +36,13 @@ func (m *ConfigManager) verifyBackupIntegrityLocked(manifest BackupManifest) err
 				return err
 			}
 		}
+		for _, prev := range entry.PreviousPatches {
+			if prev.Name != "" {
+				if err := verifySquadBackupFile(filepath.Join(m.backupDir, prev.Name), prev.Sha256, nil); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }
