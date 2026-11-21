@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20%7C%20Linux-blue.svg)](https://github.com/citadel)
 [![Security](https://img.shields.io/badge/Security-EAC%20Safe%20%7C%20No%20Injections-success.svg)](./SECURITY_AND_SAFETY.md)
 [![License](https://img.shields.io/badge/License-Citadel%20Proprietary-gold.svg)](./LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-1.3.2-emerald.svg)](https://github.com/genprayer/CitadelSentry/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.3-emerald.svg)](https://github.com/genprayer/CitadelSentry/releases)
 [![Linux Status](https://img.shields.io/badge/Linux-Ready-orange.svg)](./LINUX_GUIDE.md)
 
 ---
@@ -90,7 +90,7 @@
 
 ### 🪟 Windows (10 / 11 64-bit) — Основная версия
 
-1. Скачайте `citadel-sentry-v1.3.2-windows-amd64.exe` из раздела релизов.
+1. Скачайте `citadel-sentry-v1.3.3-windows-amd64.exe` из раздела релизов.
 2. Убедитесь, что клиент **Steam** запущен на вашем ПК.
 3. Запустите `.exe` (установка не требуется, приложение полностью портативное).
 4. Выберите нужный сервер Citadel и нажмите «Сидить».
@@ -101,11 +101,11 @@
 > [!NOTE]
 > Для запуска на Linux требуется установленный `webkit2gtk-4.1` (или `webkit2gtk4.1`) и настроенный клиент Steam (Proton).
 
-1. Скачайте `citadel-sentry-v1.3.2-linux-amd64` и `SHA256SUMS.txt`.
+1. Скачайте `citadel-sentry-v1.3.3-linux-amd64` и `SHA256SUMS.txt`.
 2. Сделайте файл исполняемым и запустите его:
    ```bash
-   chmod +x ./citadel-sentry-v1.3.2-linux-amd64
-   ./citadel-sentry-v1.3.2-linux-amd64
+   chmod +x ./citadel-sentry-v1.3.3-linux-amd64
+   ./citadel-sentry-v1.3.3-linux-amd64
    ```
 3. Подробное руководство по зависимостям, созданию системного ярлыка и интеграции читайте в [**Руководстве по Linux (LINUX_GUIDE.md)**](./LINUX_GUIDE.md).
 </details>

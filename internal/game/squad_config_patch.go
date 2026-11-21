@@ -103,7 +103,7 @@ func validatePotatoSettings(original []byte, fpsLimit int, lowResolution bool, g
 		if duplicates[id] {
 			return fmt.Errorf("repeated Potato Mode key %s in [%s]", setting.key, setting.section)
 		}
-		if strings.HasPrefix(key, "buse") || strings.HasPrefix(key, "buncap") {
+		if strings.HasPrefix(key, "b") || changes[section][key] == "True" || changes[section][key] == "False" {
 			if _, err := strconv.ParseBool(setting.value); err != nil {
 				return fmt.Errorf("unsupported %s value in [%s]", setting.key, setting.section)
 			}

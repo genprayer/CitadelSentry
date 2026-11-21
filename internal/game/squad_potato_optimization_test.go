@@ -1,6 +1,8 @@
 package game
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -226,3 +228,50 @@ sg.ReflectionQuality=3
 		t.Errorf("reverted config should restore DLSSMode=Quality: %s", revertedStr)
 	}
 }
+
+func TestValidatePotatoSettings_ShowEmptyServers(t *testing.T) {
+	config := []byte(`
+[/Script/Squad.SQGameUserSettings]
+bShowEmptyServers=True
+FrameRateLimit=144.000000
+bUseVSync=False
+bUncapTexturePoolSize=False
+`)
+	if err := validatePotatoSettings(config, 15, false); err != nil {
+		t.Fatalf("validatePotatoSettings rejected bShowEmptyServers=True: %v", err)
+	}
+
+	configFalse := []byte(`
+[/Script/Squad.SQGameUserSettings]
+bShowEmptyServers=False
+FrameRateLimit=144.000000
+`)
+	if err := validatePotatoSettings(configFalse, 15, false); err != nil {
+		t.Fatalf("validatePotatoSettings rejected bShowEmptyServers=False: %v", err)
+	}
+
+	configInvalid := []byte(`
+[/Script/Squad.SQGameUserSettings]
+bShowEmptyServers=NotABool
+FrameRateLimit=144.000000
+`)
+	if err := validatePotatoSettings(configInvalid, 15, false); err == nil {
+		t.Fatal("validatePotatoSettings should reject invalid boolean for bShowEmptyServers")
+	}
+}
+
+func TestValidatePotatoSettings_UserDiskConfig(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("user home not found")
+	}
+	userConfigPath := filepath.Join(home, ".local/share/Steam/steamapps/compatdata/393380/pfx/drive_c/users/steamuser/AppData/Local/SquadGame/Saved/Config/Windows/GameUserSettings.ini")
+	data, err := os.ReadFile(userConfigPath)
+	if err != nil {
+		t.Skip("user config not found")
+	}
+	if err := validatePotatoSettings(data, 15, false); err != nil {
+		t.Fatalf("validatePotatoSettings failed on user disk config: %v", err)
+	}
+}
+
