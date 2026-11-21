@@ -78,7 +78,7 @@ const currentDetectedFps = computed(() => {
     return runningPotatoState.value.currentFps
   }
   if (isPotatoEnabled.value) {
-    return potatoFps.value || 1
+    return potatoFps.value || 15
   }
   return '120+ (Стандартный)'
 })

@@ -19,7 +19,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => ({
     enabled: true,
-    fpsLimit: 1,
+    fpsLimit: 15,
     lowResolution: false,
     lowCpuPriority: true,
     autoRestoreOnExit: true
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 
 const potato = computed(() => ({
   enabled: props.modelValue?.enabled ?? true,
-  fpsLimit: props.modelValue?.fpsLimit ?? 1,
+  fpsLimit: props.modelValue?.fpsLimit ?? 15,
   lowResolution: props.modelValue?.lowResolution ?? false,
   lowCpuPriority: props.modelValue?.lowCpuPriority ?? true,
   autoRestoreOnExit: props.modelValue?.autoRestoreOnExit ?? true

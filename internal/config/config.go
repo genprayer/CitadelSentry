@@ -78,7 +78,7 @@ func DefaultSettings() AppSettings {
 		},
 		Potato: PotatoSettings{
 			Enabled:           true,
-			FpsLimit:          1,
+			FpsLimit:          15,
 			LowResolution:     false,
 			LowCpuPriority:    true,
 			AutoRestoreOnExit: true,

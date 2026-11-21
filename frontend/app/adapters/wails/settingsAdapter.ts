@@ -25,7 +25,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   },
   potato: {
     enabled: true,
-    fpsLimit: 1,
+    fpsLimit: 15,
     lowResolution: false,
     lowCpuPriority: true,
     autoRestoreOnExit: true

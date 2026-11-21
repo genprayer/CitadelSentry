@@ -100,6 +100,19 @@ func (r *Reporter) IsOptIn() bool {
 	return r.optIn
 }
 
+// ResetSession starts a fresh telemetry reporting cycle with a new ephemeral session UUID.
+func (r *Reporter) ResetSession() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	uuidStr, uuidErr := newSessionUUID(rand.Reader)
+	r.sessionUUID = uuidStr
+	r.uuidError = uuidErr
+	r.startTime = time.Now()
+	r.payload.SessionUUID = uuidStr
+	r.payload.Diagnostics = SeedingDiagnostics{}
+	r.payload.Samples = make([]DynamicMetrics, 0, maxTelemetrySamples)
+}
+
 // SetHardware updates the static hardware baseline.
 func (r *Reporter) SetHardware(hw HardwareConfig) {
 	r.mu.Lock()

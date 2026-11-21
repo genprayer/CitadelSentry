@@ -44,9 +44,11 @@ type App struct {
 	directJoinCancel  context.CancelFunc
 	directJoinID      uint64
 	potatoRunID       uint64
-	backgroundCancel  context.CancelFunc
-	isShuttingDown    atomic.Bool
-	shutdownOnce      sync.Once
+	backgroundCancel    context.CancelFunc
+	isShuttingDown      atomic.Bool
+	shutdownOnce        sync.Once
+	lastDispatchedRunID atomic.Uint64
+	telemetryWg         sync.WaitGroup
 }
 
 // NewApp creates a new App application struct
@@ -104,6 +106,7 @@ func NewApp() (*App, error) {
 			wruntime.EventsEmit(app.ctx, "citadel:seed:state_changed", session)
 			wruntime.EventsEmit(app.ctx, "seed:session_update", session)
 		}
+		app.handleSessionStateChange(session)
 	})
 
 	app.seeder.SetPowerCountdownCallback(func(action string, secondsLeft int) {
@@ -328,6 +331,17 @@ func (a *App) shutdown(_ context.Context) {
 				logger.Error("Could not restore Squad settings during shutdown", "error", err)
 			}
 		}
+
+		done := make(chan struct{})
+		go func() {
+			a.telemetryWg.Wait()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			logger.Warn("Telemetry dispatch did not complete before shutdown timeout")
+		}
 	})
 }
 
@@ -388,6 +402,89 @@ func (a *App) GetTelemetryPreview() (telemetry.Payload, error) {
 		return telemetry.Payload{}, errors.New("telemetry reporter not initialized")
 	}
 	return a.telemetryReporter.GetPreviewPayload()
+}
+
+func (a *App) handleSessionStateChange(session seed.Session) {
+	if a.telemetryReporter == nil || !a.telemetryReporter.IsOptIn() {
+		return
+	}
+	switch session.State {
+	case seed.StateConnecting:
+		a.telemetryReporter.RecordSample(telemetry.CollectDynamicSample(telemetry.CheckpointT0))
+	case seed.StateActive:
+		a.telemetryReporter.RecordSample(telemetry.CollectDynamicSample(telemetry.CheckpointPostLaunch))
+	case seed.StateCompleted, seed.StateTimedOut, seed.StateFailed, seed.StateStopped:
+		a.dispatchTelemetryForSession(session)
+	}
+}
+
+func (a *App) dispatchTelemetryForSession(session seed.Session) {
+	if a.telemetryReporter == nil || !a.telemetryReporter.IsOptIn() {
+		return
+	}
+	var currentRunID uint64
+	if a.seeder != nil {
+		currentRunID = a.seeder.CurrentRunID()
+	}
+	if currentRunID != 0 {
+		if a.lastDispatchedRunID.Swap(currentRunID) == currentRunID {
+			return
+		}
+	}
+
+	sample := telemetry.CollectDynamicSample(telemetry.CheckpointExit)
+	a.telemetryReporter.RecordSample(sample)
+
+	var optErrors []string
+	if session.ErrorMessage != "" {
+		optErrors = append(optErrors, session.ErrorMessage)
+	}
+
+	a.telemetryReporter.SetDiagnostics(telemetry.SeedingDiagnostics{
+		PotatoModeEnabled:   a.cfgMgr.Get().Potato.Enabled,
+		FpsLimitTarget:      a.cfgMgr.Get().Potato.FpsLimit,
+		LowResolutionActive: a.cfgMgr.Get().Potato.LowResolution,
+		ExitReason:          string(session.State),
+		OptimizationErrors:  optErrors,
+	})
+
+	a.telemetryWg.Add(1)
+	go func(rep *telemetry.Reporter) {
+		defer a.telemetryWg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := rep.Dispatch(ctx); err != nil {
+			logger.Warn("Failed to deliver session telemetry report", "error", err)
+		} else {
+			rep.ResetSession()
+		}
+	}(a.telemetryReporter)
+}
+
+func (a *App) dispatchPreLaunchFailureTelemetry(err error) {
+	if a.telemetryReporter == nil || !a.telemetryReporter.IsOptIn() {
+		return
+	}
+	sample := telemetry.CollectDynamicSample(telemetry.CheckpointExit)
+	a.telemetryReporter.RecordSample(sample)
+	a.telemetryReporter.SetDiagnostics(telemetry.SeedingDiagnostics{
+		PotatoModeEnabled:   a.cfgMgr.Get().Potato.Enabled,
+		FpsLimitTarget:      a.cfgMgr.Get().Potato.FpsLimit,
+		LowResolutionActive: a.cfgMgr.Get().Potato.LowResolution,
+		ExitReason:          "failed",
+		OptimizationErrors:  []string{err.Error()},
+	})
+	a.telemetryWg.Add(1)
+	go func(rep *telemetry.Reporter) {
+		defer a.telemetryWg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := rep.Dispatch(ctx); err != nil {
+			logger.Warn("Failed to deliver pre-launch failure telemetry report", "error", err)
+		} else {
+			rep.ResetSession()
+		}
+	}(a.telemetryReporter)
 }
 
 // GetServers retrieves the fleet servers list
@@ -523,6 +620,7 @@ func (a *App) StartSeed(plan seed.Plan) (result seed.Session, startError error) 
 		firstServer = &queue[0]
 	}
 	a.logPreLaunchDiagnostics("Seed Mission Queue", &plan, firstServer)
+	a.lastDispatchedRunID.Store(0)
 
 	if a.seeder.HasRunningWorker() || a.seeder.GetSession().State.IsActive() {
 		return seed.Session{}, fmt.Errorf("stop the current seed session before starting another")
@@ -579,6 +677,7 @@ func (a *App) StartSeed(plan seed.Plan) (result seed.Session, startError error) 
 				// Once connected in-game, connectionHook clamps FPS to potatoCfg.FpsLimit.
 				startupFps := 60
 				if err := a.squadConfig.ApplyPotatoConfig(startupFps, potatoCfg.LowResolution, gpuInfo); err != nil {
+					a.dispatchPreLaunchFailureTelemetry(err)
 					return seed.Session{}, fmt.Errorf("apply Potato Mode before launching Squad: %w", err)
 				}
 				isPotatoPrepared = true
@@ -611,6 +710,7 @@ func (a *App) StartSeed(plan seed.Plan) (result seed.Session, startError error) 
 
 	if err := a.seeder.Start(a.appContext(), plan, queue); err != nil {
 		logger.Error("Failed to start seeder engine", "error", err)
+		a.dispatchPreLaunchFailureTelemetry(err)
 		if potatoCfg.Enabled {
 			if restoreErr := a.restoreSquadIfStopped(); restoreErr != nil {
 				return seed.Session{}, fmt.Errorf("start seed: %w; restore Potato Mode: %v", err, restoreErr)
@@ -751,21 +851,7 @@ func (a *App) StopSeed() (seed.Session, error) {
 		}
 	}
 	session := a.seeder.GetSession()
-	if a.telemetryReporter != nil && a.telemetryReporter.IsOptIn() {
-		sample := telemetry.CollectDynamicSample(telemetry.CheckpointExit)
-		a.telemetryReporter.RecordSample(sample)
-		a.telemetryReporter.SetDiagnostics(telemetry.SeedingDiagnostics{
-			PotatoModeEnabled:   a.cfgMgr.Get().Potato.Enabled,
-			FpsLimitTarget:      a.cfgMgr.Get().Potato.FpsLimit,
-			LowResolutionActive: a.cfgMgr.Get().Potato.LowResolution,
-			ExitReason:          string(session.State),
-		})
-		go func(rep *telemetry.Reporter) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			_ = rep.Dispatch(ctx)
-		}(a.telemetryReporter)
-	}
+	a.dispatchTelemetryForSession(session)
 	logger.Info("Seed mission stopped", "state", session.State)
 	return session, errors.Join(cancelErr, priorityError)
 }

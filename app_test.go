@@ -19,6 +19,7 @@ import (
 	"citadel-seeder/internal/game"
 	"citadel-seeder/internal/platform"
 	"citadel-seeder/internal/seed"
+	"citadel-seeder/internal/telemetry"
 )
 
 func TestUnavailableConfigManagerReportsUnknownStatus(t *testing.T) {
@@ -797,5 +798,58 @@ func TestAppBaselineAndRestorePoints(t *testing.T) {
 	data, _ = os.ReadFile(app.squadConfig.ConfigPath())
 	if !bytes.Equal(data, original) {
 		t.Fatalf("baseline restored data != original, got: %s", data)
+	}
+}
+
+func TestTelemetryAutoDispatchesOnTerminalState(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	app, _, _ := newTestApp(t)
+	app.telemetryReporter = telemetry.NewReporter(true, server.URL, "1.3.3")
+
+	// Trigger failed terminal state
+	app.handleSessionStateChange(seed.Session{
+		State:        seed.StateFailed,
+		ErrorMessage: "test simulated failure",
+	})
+
+	// Wait for async dispatch
+	app.telemetryWg.Wait()
+
+	if hits.Load() != 1 {
+		t.Fatalf("expected 1 telemetry dispatch on terminal state, got %d", hits.Load())
+	}
+}
+
+func TestTelemetryDeduplicationOnSameRun(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	app, _, _ := newTestApp(t)
+	app.telemetryReporter = telemetry.NewReporter(true, server.URL, "1.3.3")
+
+	// Trigger multiple terminal state callbacks
+	app.handleSessionStateChange(seed.Session{
+		State:        seed.StateStopped,
+		ErrorMessage: "first stop",
+	})
+	app.handleSessionStateChange(seed.Session{
+		State:        seed.StateStopped,
+		ErrorMessage: "second stop duplicate",
+	})
+
+	app.telemetryWg.Wait()
+
+	if hits.Load() != 1 {
+		t.Fatalf("expected exactly 1 dispatch despite multiple terminal events, got %d", hits.Load())
 	}
 }
