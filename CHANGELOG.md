@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 — 2026-11-21
+
+- **Fix Potato Mode Config Validation**: Fix parser rejection of `bShowEmptyServers` in `validatePotatoSettings`. Boolean settings starting with `b` or targeting `"True"`/`"False"` are now correctly validated via `strconv.ParseBool` rather than falling through to numeric parsing, preventing `unsupported bShowEmptyServers value` launch errors on Linux/Proton and Windows configurations.
+
 ## 1.3.2 — 2026-11-20
 
 - **Crash-Free Priority Handling**: Catch all process priority and platform errors (`ERROR_ACCESS_DENIED`, snapshot errors, invalid handles) in `applySquadPriorityForRun`. Log warnings and continue seeding normally instead of aborting with `StateFailed` ("СИДИНГ НЕ УДАЛСЯ").
