@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.4 — 2026-11-22
+
+- **Automated End-to-End Telemetry Dispatch**: Hook telemetry delivery into all terminal session states (`completed`, `timed_out`, `failed`, `stopped`) and pre-launch failure handlers. Add deduplication and ephemeral session UUID rotation, ensuring technical diagnostics reliably reach the Citadel admin dashboard.
+- **Safe Potato Mode FPS Floor (15 FPS)**: Raise default Potato Mode FPS from 1 FPS to 15 FPS across backend defaults and UI presets. Prevent Unreal Engine main loop starvation, asset loading stalls, and OS window manager "Not Responding" ping timeouts.
+- **Non-Fatal Windows EAC Priority Handling**: Ensure Easy Anti-Cheat permission denial (`Access is denied`) when adjusting process priority on Windows is logged as a non-fatal warning without aborting seeding missions.
+- **Universal Boolean GameUserSettings Parsing**: Ensure all boolean settings in `[/Script/Squad.SQGameUserSettings]` (including `bShowEmptyServers=True`) validate cleanly across Windows and Linux installations.
+
 ## 1.3.3 — 2026-11-21
 
 - **Fix Potato Mode Config Validation**: Fix parser rejection of `bShowEmptyServers` in `validatePotatoSettings`. Boolean settings starting with `b` or targeting `"True"`/`"False"` are now correctly validated via `strconv.ParseBool` rather than falling through to numeric parsing, preventing `unsupported bShowEmptyServers value` launch errors on Linux/Proton and Windows configurations.
